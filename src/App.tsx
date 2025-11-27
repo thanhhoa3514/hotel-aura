@@ -7,19 +7,28 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
-import Dashboard from "./pages/Dashboard";
-import StaffDashboard from "./pages/StaffDashboard";
-import Rooms from "./pages/Rooms";
-import Bookings from "./pages/Bookings";
-import Customers from "./pages/Customers";
-import Services from "./pages/Services";
-import BookingLanding from "./pages/BookingLanding";
-import ClientRooms from "./pages/ClientRooms";
-import RoomDetail from "./pages/RoomDetail";
-import Checkout from "./pages/Checkout";
-import NotFound from "./pages/NotFound";
 import { useUserRole } from "@/hooks/useUserRole";
 import ChatButton from "./components/chat/ChatButton";
+
+// Client pages
+import Home from "./pages/client/Home";
+import ClientRooms from "./pages/client/Rooms";
+import RoomDetail from "./pages/client/RoomDetail";
+import Checkout from "./pages/client/Checkout";
+import Login from "./pages/client/Login";
+import Register from "./pages/client/Register";
+
+// Admin pages
+import Dashboard from "./pages/admin/Dashboard";
+import StaffDashboard from "./pages/admin/StaffDashboard";
+import Rooms from "./pages/admin/Rooms";
+import Bookings from "./pages/admin/Bookings";
+import Customers from "./pages/admin/Customers";
+import Services from "./pages/admin/Services";
+
+// Shared
+import NotFound from "./pages/NotFound";
+
 
 
 
@@ -54,10 +63,15 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<BookingLanding />} />
+          {/* Client routes */}
+          <Route path="/" element={<Home />} />
           <Route path="/rooms" element={<ClientRooms />} />
           <Route path="/rooms/:id" element={<RoomDetail />} />
           <Route path="/checkout" element={<Checkout />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+
+          {/* Admin routes */}
           <Route path="/admin" element={<Layout><Dashboard /></Layout>} />
           <Route path="/staff" element={<Layout><StaffDashboard /></Layout>} />
           <Route path="/admin/rooms" element={<Layout><Rooms /></Layout>} />
@@ -68,6 +82,8 @@ const App = () => (
           <Route path="/admin/invoices" element={<Layout><div className="animate-fade-in"><h1 className="text-3xl font-bold">Hóa đơn</h1><p className="text-muted-foreground mt-2">Tính năng đang phát triển...</p></div></Layout>} />
           <Route path="/admin/statistics" element={<Layout><div className="animate-fade-in"><h1 className="text-3xl font-bold">Thống kê</h1><p className="text-muted-foreground mt-2">Tính năng đang phát triển...</p></div></Layout>} />
           <Route path="/admin/settings" element={<Layout><div className="animate-fade-in"><h1 className="text-3xl font-bold">Cài đặt</h1><p className="text-muted-foreground mt-2">Tính năng đang phát triển...</p></div></Layout>} />
+
+          {/* 404 */}
           <Route path="*" element={<NotFound />} />
         </Routes>
         <ChatButton />
