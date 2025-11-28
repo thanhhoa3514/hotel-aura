@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Mail, Lock, Eye, EyeOff, User, Phone, ArrowRight, Hotel, Check } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import authService from "@/services/authService";
+import emailVerificationService from "@/services/email/emailVerificationService";
 
 export default function Register() {
     const [showPassword, setShowPassword] = useState(false);
@@ -17,6 +19,7 @@ export default function Register() {
     const [confirmPassword, setConfirmPassword] = useState("");
     const [agreeTerms, setAgreeTerms] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const navigate = useNavigate();
 
     const getPasswordStrength = (password: string) => {
         if (password.length === 0) return { strength: 0, label: "", color: "" };
@@ -42,11 +45,30 @@ export default function Register() {
 
         setIsLoading(true);
 
-        // Simulate API call
-        setTimeout(() => {
-            toast.success("Đăng ký thành công! Vui lòng đăng nhập.");
+        try {
+            // Register - User will need to verify email
+            await authService.register({
+                fullName,
+                email,
+                password,
+                phone,
+            });
+
+            toast.success('Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản.');
+
+            // Send OTP email
+            await emailVerificationService.sendOTP(email, fullName);
+
+            // Redirect to email verification page
+            navigate('/verify-email', {
+                state: { email, fullName }
+            });
+        } catch (error: any) {
+            // Error toast already shown by apiClient interceptor
+            console.error('Registration failed:', error);
+        } finally {
             setIsLoading(false);
-        }, 1500);
+        }
     };
 
     return (

@@ -1,23 +1,19 @@
 import axios, { AxiosError, AxiosInstance, AxiosResponse } from 'axios';
 import { toast } from 'sonner';
 
-// Create axios instance with base configuration
 const apiClient: AxiosInstance = axios.create({
     baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080',
     timeout: 10000,
     headers: {
         'Content-Type': 'application/json',
     },
+    withCredentials: true, // Important for httpOnly cookies
 });
 
 // Request interceptor
 apiClient.interceptors.request.use(
     (config) => {
-        // You can add authentication tokens here if needed
-        // const token = localStorage.getItem('token');
-        // if (token) {
-        //   config.headers.Authorization = `Bearer ${token}`;
-        // }
+        // No need to manually add JWT - it's sent automatically via httpOnly cookie
         return config;
     },
     (error) => {
@@ -28,15 +24,12 @@ apiClient.interceptors.request.use(
 // Response interceptor
 apiClient.interceptors.response.use(
     (response: AxiosResponse) => {
-        // Extract data from successful responses
         return response;
     },
     (error: AxiosError<any>) => {
-        // Handle errors globally
         let errorMessage = 'Đã xảy ra lỗi khi kết nối với server';
 
         if (error.response) {
-            // Server responded with error status
             const status = error.response.status;
             const data = error.response.data;
 
@@ -46,6 +39,10 @@ apiClient.interceptors.response.use(
                     break;
                 case 401:
                     errorMessage = 'Bạn cần đăng nhập để thực hiện thao tác này';
+                    // Redirect to login on auth failure
+                    if (window.location.pathname !== '/login') {
+                        window.location.href = '/login';
+                    }
                     break;
                 case 403:
                     errorMessage = 'Bạn không có quyền truy cập';
@@ -60,16 +57,12 @@ apiClient.interceptors.response.use(
                     errorMessage = data?.message || errorMessage;
             }
         } else if (error.request) {
-            // Request was made but no response received
             errorMessage = 'Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng';
         } else {
-            // Something else happened
             errorMessage = error.message || errorMessage;
         }
 
-        // Show error toast
         toast.error(errorMessage);
-
         return Promise.reject(error);
     }
 );

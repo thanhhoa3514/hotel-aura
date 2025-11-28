@@ -8,6 +8,7 @@ import { RoomCard } from "@/components/booking/RoomCard";
 import { ServiceCard } from "@/components/booking/ServiceCard";
 import { TestimonialCarousel } from "@/components/booking/TestimonialCarousel";
 import { ContactForm } from "@/components/booking/ContactForm";
+import { Footer } from "@/pages/client/Footer";
 
 const rooms = [
   {
@@ -102,8 +103,8 @@ export default function BookingLanding() {
           </nav>
 
           <div className="flex items-center gap-3">
-            <Button 
-              onClick={() => setIsAuthModalOpen(true)} 
+            <Button
+              onClick={() => setIsAuthModalOpen(true)}
               variant="outline"
               className="hidden sm:flex"
             >
@@ -235,13 +236,13 @@ export default function BookingLanding() {
             >
               <h2 className="text-4xl md:text-5xl font-bold mb-6">About HotelPro</h2>
               <p className="text-muted-foreground text-lg mb-6">
-                For over 20 years, HotelPro has been a beacon of hospitality and luxury. 
-                Nestled in the heart of the city, we offer an unparalleled experience 
+                For over 20 years, HotelPro has been a beacon of hospitality and luxury.
+                Nestled in the heart of the city, we offer an unparalleled experience
                 combining modern amenities with timeless elegance.
               </p>
               <p className="text-muted-foreground text-lg mb-6">
-                Our dedicated team is committed to making every stay memorable, whether 
-                you're here for business or pleasure. From our world-class dining to our 
+                Our dedicated team is committed to making every stay memorable, whether
+                you're here for business or pleasure. From our world-class dining to our
                 state-of-the-art facilities, every detail is crafted with care.
               </p>
               <Button variant="outline" size="lg">
@@ -329,72 +330,7 @@ export default function BookingLanding() {
       </section>
 
       {/* Footer */}
-      <footer className="bg-card border-t py-12 px-6">
-        <div className="container mx-auto">
-          <div className="grid md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent">
-                  <span className="text-lg font-bold text-white">HP</span>
-                </div>
-                <span className="text-xl font-bold">HotelPro</span>
-              </div>
-              <p className="text-muted-foreground">
-                Experience luxury and comfort in the heart of paradise
-              </p>
-            </div>
-
-            <div>
-              <h4 className="font-semibold mb-4">Quick Links</h4>
-              <div className="space-y-2">
-                <button onClick={() => scrollToSection("rooms")} className="block text-muted-foreground hover:text-foreground transition-colors">
-                  Rooms
-                </button>
-                <button onClick={() => scrollToSection("services")} className="block text-muted-foreground hover:text-foreground transition-colors">
-                  Services
-                </button>
-                <button onClick={() => scrollToSection("about")} className="block text-muted-foreground hover:text-foreground transition-colors">
-                  About
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="font-semibold mb-4">Legal</h4>
-              <div className="space-y-2">
-                <a href="#" className="block text-muted-foreground hover:text-foreground transition-colors">
-                  Terms of Service
-                </a>
-                <a href="#" className="block text-muted-foreground hover:text-foreground transition-colors">
-                  Privacy Policy
-                </a>
-                <a href="#" className="block text-muted-foreground hover:text-foreground transition-colors">
-                  Careers
-                </a>
-              </div>
-            </div>
-
-            <div>
-              <h4 className="font-semibold mb-4">Connect</h4>
-              <div className="space-y-2">
-                <a href="#" className="block text-muted-foreground hover:text-foreground transition-colors">
-                  Facebook
-                </a>
-                <a href="#" className="block text-muted-foreground hover:text-foreground transition-colors">
-                  Instagram
-                </a>
-                <a href="#" className="block text-muted-foreground hover:text-foreground transition-colors">
-                  Twitter
-                </a>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t pt-8 text-center text-muted-foreground">
-            <p>© 2025 HotelPro — All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
 
       {/* Scroll to Top Button */}
       {showScrollTop && (
