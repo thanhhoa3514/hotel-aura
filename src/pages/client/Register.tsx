@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import authService from "@/services/authService";
+import emailVerificationService from "@/services/email/emailVerificationService";
 
 export default function Register() {
     const [showPassword, setShowPassword] = useState(false);
@@ -45,19 +46,26 @@ export default function Register() {
         setIsLoading(true);
 
         try {
-            // Register - JWT will be automatically stored in httpOnly cookie by browser
-            const user = await authService.register({
+            // Register - User will need to verify email
+            await authService.register({
                 fullName,
                 email,
                 password,
                 phone,
             });
-            toast.success(`Đăng ký thành công! Chào mừng ${user.fullName}!`);
-            // Redirect to admin dashboard
-            navigate("/admin");
+
+            toast.success('Đăng ký thành công! Vui lòng kiểm tra email để xác thực tài khoản.');
+
+            // Send OTP email
+            await emailVerificationService.sendOTP(email, fullName);
+
+            // Redirect to email verification page
+            navigate('/verify-email', {
+                state: { email, fullName }
+            });
         } catch (error: any) {
             // Error toast already shown by apiClient interceptor
-            console.error("Registration failed:", error);
+            console.error('Registration failed:', error);
         } finally {
             setIsLoading(false);
         }
