@@ -17,6 +17,8 @@ import RoomDetail from "./pages/client/RoomDetail";
 import Checkout from "./pages/client/Checkout";
 import Login from "./pages/client/Login";
 import Register from "./pages/client/Register";
+import EmailVerification from "./pages/client/EmailVerification";
+import VerificationSuccess from "./pages/client/VerificationSuccess";
 
 // Admin pages
 import Dashboard from "./pages/admin/Dashboard";
@@ -68,6 +70,8 @@ const App = () => (
             <Route path="/checkout" element={<Checkout />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/verify-email" element={<EmailVerification />} />
+            <Route path="/verification-success" element={<VerificationSuccess />} />
 
             {/* Protected admin routes */}
             <Route
