@@ -16,25 +16,25 @@ export default function Dashboard() {
                 <StatCard
                     title="Tổng phòng"
                     value="120"
-                    description="+10% so với tháng trước"
+                    trend={{ value: 10, label: "so với tháng trước" }}
                     icon={Building2}
                 />
                 <StatCard
                     title="Khách hàng"
                     value="450"
-                    description="+15% so với tháng trước"
+                    trend={{ value: 15, label: "so với tháng trước" }}
                     icon={Users}
                 />
                 <StatCard
                     title="Đặt phòng"
                     value="89"
-                    description="Trong tháng này"
+                    trend={{ value: 0, label: "Trong tháng này" }}
                     icon={Calendar}
                 />
                 <StatCard
                     title="Doanh thu"
                     value="450M VNĐ"
-                    description="+20% so với tháng trước"
+                    trend={{ value: 20, label: "so với tháng trước" }}
                     icon={DollarSign}
                 />
             </div>

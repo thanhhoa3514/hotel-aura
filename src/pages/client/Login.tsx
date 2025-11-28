@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Hotel } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
+import authService from "@/services/authService";
 
 export default function Login() {
     const [showPassword, setShowPassword] = useState(false);
@@ -13,16 +14,24 @@ export default function Login() {
     const [password, setPassword] = useState("");
     const [rememberMe, setRememberMe] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const navigate = useNavigate();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
 
-        // Simulate API call
-        setTimeout(() => {
-            toast.success("Đăng nhập thành công!");
+        try {
+            // Login - JWT will be automatically stored in httpOnly cookie by browser
+            const user = await authService.login({ email, password });
+            toast.success(`Chào mừng ${user.fullName}!`);
+            // Redirect to admin dashboard
+            navigate("/admin");
+        } catch (error: any) {
+            // Error toast already shown by apiClient interceptor
+            console.error("Login failed:", error);
+        } finally {
             setIsLoading(false);
-        }, 1500);
+        }
     };
 
     return (

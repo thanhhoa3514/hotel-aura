@@ -90,7 +90,7 @@ const Rooms = () => {
     return matchesSearch && matchesType;
   });
 
-  const handleMouseEnter = (room: typeof initialRooms[0], event: React.MouseEvent) => {
+  const handleMouseEnter = (room: any, event: React.MouseEvent) => {
     // Clear any existing timeout
     if (hoverTimeout) {
       clearTimeout(hoverTimeout);
@@ -114,7 +114,7 @@ const Rooms = () => {
     setHoveredRoom(null);
   };
 
-  const handleRowClick = (room: typeof initialRooms[0]) => {
+  const handleRowClick = (room: any) => {
     setSelectedRoom(room);
     setIsDetailModalOpen(true);
     setHoveredRoom(null);
