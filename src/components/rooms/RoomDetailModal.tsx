@@ -7,33 +7,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
+import { Room } from "@/types";
+import { getRoomStatusInfo, getRoomStatusOptions } from "@/utils/roomStatus";
 
 interface RoomDetailModalProps {
-  room: {
-    id: number;
-    number: string;
-    type: string;
-    price: number;
-    status: string;
-    floor: number;
-    image?: string;
-    description?: string;
-    size?: string;
-    capacity?: number;
-    amenities?: string[];
-    lastBooking?: string;
-  } | null;
+  room: Room | null;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (updatedRoom: any) => void;
+  onSave: (updatedRoom: Room) => void;
 }
-
-const statusMap = {
-  available: { label: "Trống", variant: "default" as const },
-  occupied: { label: "Đã đặt", variant: "secondary" as const },
-  cleaning: { label: "Đang dọn", variant: "outline" as const },
-  maintenance: { label: "Bảo trì", variant: "destructive" as const },
-};
 
 const amenityIcons: Record<string, any> = {
   wifi: Wifi,
@@ -78,9 +60,9 @@ export const RoomDetailModal = ({ room, isOpen, onClose, onSave }: RoomDetailMod
             <div className="bg-card border border-border rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden pointer-events-auto">
               {/* Header with Image */}
               <div className="relative h-64 bg-gradient-to-br from-primary/30 to-accent/30">
-                {room.image ? (
-                  <img 
-                    src={room.image} 
+                {room.images ? (
+                  <img
+                    src={room.images[0].imageUrl}
                     alt={`Room ${room.number}`}
                     className="w-full h-full object-cover"
                   />
@@ -89,7 +71,7 @@ export const RoomDetailModal = ({ room, isOpen, onClose, onSave }: RoomDetailMod
                     <div className="text-9xl font-bold text-white/20">{room.number}</div>
                   </div>
                 )}
-                
+
                 {/* Close Button */}
                 <button
                   onClick={onClose}
@@ -100,8 +82,8 @@ export const RoomDetailModal = ({ room, isOpen, onClose, onSave }: RoomDetailMod
 
                 {/* Status Badge */}
                 <div className="absolute top-4 left-4">
-                  <Badge variant={statusMap[room.status as keyof typeof statusMap].variant} className="text-sm px-3 py-1">
-                    {statusMap[room.status as keyof typeof statusMap].label}
+                  <Badge variant={getRoomStatusInfo(room.status.name).variant} className="text-sm px-3 py-1">
+                    {getRoomStatusInfo(room.status.name).label}
                   </Badge>
                 </div>
               </div>
@@ -113,10 +95,10 @@ export const RoomDetailModal = ({ room, isOpen, onClose, onSave }: RoomDetailMod
                   <div className="flex items-start justify-between">
                     <div>
                       <h2 className="text-3xl font-bold">Phòng {room.number}</h2>
-                      <p className="text-lg text-muted-foreground mt-1">{room.type}</p>
+                      <p className="text-lg text-muted-foreground mt-1">{room.roomType.name}</p>
                     </div>
                     <div className="text-right">
-                      <div className="text-3xl font-bold text-primary">{room.price.toLocaleString('vi-VN')} VNĐ</div>
+                      <div className="text-3xl font-bold text-primary">{room.roomType.pricePerNight.toLocaleString('vi-VN')} VNĐ</div>
                       <div className="text-sm text-muted-foreground">/ đêm</div>
                     </div>
                   </div>
@@ -152,48 +134,55 @@ export const RoomDetailModal = ({ room, isOpen, onClose, onSave }: RoomDetailMod
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <Label>Số phòng</Label>
-                          <Input 
-                            value={editedRoom?.number} 
+                          <Input
+                            value={editedRoom?.number}
                             onChange={(e) => setEditedRoom({ ...editedRoom!, number: e.target.value })}
                           />
                         </div>
                         <div>
                           <Label>Loại phòng</Label>
-                          <Input 
-                            value={editedRoom?.type} 
-                            onChange={(e) => setEditedRoom({ ...editedRoom!, type: e.target.value })}
+                          <Input
+                            value={editedRoom?.roomType.name}
+                            onChange={(e) => setEditedRoom({ ...editedRoom!, roomType: { ...editedRoom!.roomType, name: e.target.value } })}
                           />
                         </div>
                         <div>
                           <Label>Giá/đêm (VNĐ)</Label>
-                          <Input 
+                          <Input
                             type="number"
-                            value={editedRoom?.price} 
-                            onChange={(e) => setEditedRoom({ ...editedRoom!, price: parseInt(e.target.value) })}
+                            value={editedRoom?.roomType.pricePerNight}
+                            onChange={(e) => setEditedRoom({ ...editedRoom!, roomType: { ...editedRoom!.roomType, pricePerNight: parseInt(e.target.value) } })}
                           />
                         </div>
                         <div>
                           <Label>Trạng thái</Label>
-                          <Select 
-                            value={editedRoom?.status} 
-                            onValueChange={(value) => setEditedRoom({ ...editedRoom!, status: value })}
+                          <Select
+                            value={editedRoom?.status?.name}
+                            onValueChange={(value) => setEditedRoom({
+                              ...editedRoom!,
+                              status: {
+                                id: editedRoom!.status.id,
+                                name: value
+                              }
+                            })}
                           >
                             <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="available">Trống</SelectItem>
-                              <SelectItem value="occupied">Đã đặt</SelectItem>
-                              <SelectItem value="cleaning">Đang dọn</SelectItem>
-                              <SelectItem value="maintenance">Bảo trì</SelectItem>
+                              {getRoomStatusOptions().map(({ value, label }) => (
+                                <SelectItem key={value} value={value}>
+                                  {label}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
                       </div>
                       <div>
                         <Label>Mô tả</Label>
-                        <Textarea 
-                          value={editedRoom?.description || ""} 
+                        <Textarea
+                          value={editedRoom?.description || ""}
                           onChange={(e) => setEditedRoom({ ...editedRoom!, description: e.target.value })}
                           rows={3}
                         />

@@ -39,8 +39,13 @@ apiClient.interceptors.response.use(
                     break;
                 case 401:
                     errorMessage = 'Bạn cần đăng nhập để thực hiện thao tác này';
-                    // Redirect to login on auth failure
-                    if (window.location.pathname !== '/login') {
+
+                    // Only redirect to login for protected routes (admin/staff routes)
+                    // Public client routes should not redirect
+                    const isProtectedRoute = window.location.pathname.startsWith('/admin') ||
+                        window.location.pathname.startsWith('/staff');
+
+                    if (isProtectedRoute && window.location.pathname !== '/login') {
                         window.location.href = '/login';
                     }
                     break;

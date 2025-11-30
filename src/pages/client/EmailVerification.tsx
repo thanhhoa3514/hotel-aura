@@ -89,13 +89,13 @@ export default function EmailVerification() {
     };
 
     return (
-        <div className="min-h-screen w-full relative overflow-hidden bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-gray-900 dark:via-purple-900 dark:to-indigo-900">
+        <div className="min-h-screen w-full relative overflow-hidden bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50 dark:from-gray-900 dark:via-orange-900/20 dark:to-amber-900/20">
             {/* Animated background particles */}
             <div className="absolute inset-0 overflow-hidden">
                 {[...Array(15)].map((_, i) => (
                     <motion.div
                         key={i}
-                        className="absolute w-2 h-2 bg-purple-400/30 rounded-full"
+                        className="absolute w-2 h-2 bg-orange-400/30 rounded-full"
                         style={{
                             left: `${Math.random() * 100}%`,
                             top: `${Math.random() * 100}%`,
@@ -129,19 +129,19 @@ export default function EmailVerification() {
                                 initial={{ scale: 0 }}
                                 animate={{ scale: 1 }}
                                 transition={{ type: 'spring', duration: 0.6 }}
-                                className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 mb-4"
+                                className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-orange-500 to-amber-600 mb-4"
                             >
                                 <Mail className="w-8 h-8 text-white" />
                             </motion.div>
 
-                            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                            <h1 className="text-3xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
                                 Xác thực Email
                             </h1>
 
                             <p className="text-gray-600 dark:text-gray-300 mt-2 text-sm">
                                 Chúng tôi đã gửi mã OTP đến email
                             </p>
-                            <p className="text-purple-600 dark:text-purple-400 font-medium mt-1">
+                            <p className="text-orange-600 dark:text-orange-400 font-medium mt-1">
                                 {email}
                             </p>
                         </div>
@@ -156,10 +156,10 @@ export default function EmailVerification() {
                         </div>
 
                         {/* Info box */}
-                        <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-xl p-4 mb-6">
+                        <div className="bg-orange-50 dark:bg-orange-900/30 border border-orange-200 dark:border-orange-800 rounded-xl p-4 mb-6">
                             <div className="flex items-start gap-3">
                                 <div className="mt-0.5">
-                                    <Check className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                                    <Check className="w-5 h-5 text-orange-600 dark:text-orange-400" />
                                 </div>
                                 <div className="text-sm text-gray-700 dark:text-gray-300">
                                     <p className="font-medium mb-1">Nhập mã OTP gồm 6 chữ số</p>
@@ -183,7 +183,7 @@ export default function EmailVerification() {
                         <Button
                             onClick={() => otp.length === 6 && verifyOTP(otp)}
                             disabled={otp.length !== 6 || isVerifying}
-                            className="w-full h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-300"
+                            className="w-full h-12 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-300"
                         >
                             {isVerifying ? 'Đang xác thực...' : 'Xác thực'}
                         </Button>
@@ -191,7 +191,7 @@ export default function EmailVerification() {
                         {/* Back to login */}
                         <button
                             onClick={() => navigate('/login')}
-                            className="w-full mt-4 flex items-center justify-center gap-2 text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors text-sm"
+                            className="w-full mt-4 flex items-center justify-center gap-2 text-gray-600 dark:text-gray-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors text-sm"
                         >
                             <ArrowLeft className="w-4 h-4" />
                             Quay lại đăng nhập

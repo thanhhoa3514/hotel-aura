@@ -35,7 +35,7 @@ const mapRoomResponseToRoom = (apiRoom: RoomResponse) => ({
   number: apiRoom.roomNumber,
   type: apiRoom.roomType.name,
   price: apiRoom.roomType.pricePerNight,
-  status: apiRoom.roomStatus.name.toLowerCase(),
+  status: apiRoom.status.name.toLowerCase(),
   floor: apiRoom.floor,
   size: "N/A", // Not provided by backend
   capacity: 2, // Default value
