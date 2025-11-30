@@ -6,9 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { BookingModal } from "@/components/booking/BookingModal";
+import { roomService } from "@/services/roomService";
+import { RoomResponse } from "@/types/api.types";
+import { ClientNavbar } from "@/components/layout/ClientNavbar";
 import {
   Carousel,
   CarouselContent,
@@ -16,6 +18,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
+import { Footer } from "./Footer";
 
 const amenityIcons: Record<string, any> = {
   "WiFi": Wifi,
@@ -30,16 +33,16 @@ const amenityIcons: Record<string, any> = {
 };
 
 const statusMap = {
-  available: { label: "Có sẵn", variant: "default" as const },
-  occupied: { label: "Đã đặt", variant: "secondary" as const },
-  maintenance: { label: "Bảo trì", variant: "destructive" as const },
+  AVAILABLE: { label: "Có sẵn", variant: "default" as const },
+  OCCUPIED: { label: "Đã đặt", variant: "secondary" as const },
+  MAINTENANCE: { label: "Bảo trì", variant: "destructive" as const },
+  CLEANING: { label: "Đang dọn", variant: "secondary" as const },
 };
 
 export default function RoomDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [room, setRoom] = useState<any>(null);
-  const [roomImages, setRoomImages] = useState<any[]>([]);
+  const [room, setRoom] = useState<RoomResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
 
@@ -52,25 +55,8 @@ export default function RoomDetail() {
   const fetchRoom = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("rooms")
-        .select("*")
-        .eq("id", id)
-        .single();
-
-      if (error) throw error;
+      const data = await roomService.getRoomById(id!);
       setRoom(data);
-      
-      // Fetch room images
-      const { data: imagesData, error: imagesError } = await supabase
-        .from("room_images")
-        .select("*")
-        .eq("room_id", id)
-        .order("display_order", { ascending: true });
-
-      if (!imagesError && imagesData) {
-        setRoomImages(imagesData);
-      }
     } catch (error) {
       console.error("Error fetching room:", error);
       toast.error("Không thể tải thông tin phòng");
@@ -94,36 +80,7 @@ export default function RoomDetail() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <motion.header
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        className="sticky top-0 z-50 backdrop-blur-md bg-card/80 border-b"
-      >
-        <div className="container mx-auto px-6 h-20 flex items-center justify-between">
-          <button onClick={() => navigate("/")} className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent">
-              <span className="text-lg font-bold text-white">HP</span>
-            </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              HotelPro
-            </span>
-          </button>
-
-          <nav className="hidden md:flex items-center gap-8">
-            <button onClick={() => navigate("/")} className="text-foreground/80 hover:text-foreground transition-colors">
-              Trang chủ
-            </button>
-            <button onClick={() => navigate("/rooms")} className="text-foreground font-semibold transition-colors">
-              Phòng
-            </button>
-          </nav>
-
-          <Button onClick={() => setIsBookingModalOpen(true)} className="bg-gradient-to-r from-primary to-accent hover:opacity-90">
-            Đặt phòng ngay
-          </Button>
-        </div>
-      </motion.header>
+      <ClientNavbar currentPage="rooms" onBookingClick={() => setIsBookingModalOpen(true)} />
 
       {/* Back Button */}
       <div className="container mx-auto px-6 py-6">
@@ -147,15 +104,15 @@ export default function RoomDetail() {
             className="space-y-4"
           >
             <div className="relative rounded-2xl overflow-hidden">
-              {roomImages.length > 0 ? (
+              {room.images && room.images.length > 0 ? (
                 <Carousel className="w-full">
                   <CarouselContent>
-                    {roomImages.map((image, index) => (
+                    {room.images.map((image, index) => (
                       <CarouselItem key={image.id}>
                         <div className="relative h-[500px]">
                           <img
-                            src={image.image_url}
-                            alt={`${room.room_type} - Ảnh ${index + 1}`}
+                            src={image.imageUrl}
+                            alt={`${room.roomType.name} - Ảnh ${index + 1}`}
                             className="w-full h-full object-cover"
                           />
                         </div>
@@ -168,15 +125,15 @@ export default function RoomDetail() {
               ) : (
                 <div className="relative h-[500px]">
                   <img
-                    src={room.image_url || "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=800"}
-                    alt={room.room_type}
+                    src="https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=800"
+                    alt={room.roomType.name}
                     className="w-full h-full object-cover"
                   />
                 </div>
               )}
               <div className="absolute top-4 right-4 z-10">
-                <Badge variant={statusMap[room.status as keyof typeof statusMap]?.variant || "default"} className="text-base px-4 py-2">
-                  {statusMap[room.status as keyof typeof statusMap]?.label || room.status}
+                <Badge variant={statusMap[room.status.name as keyof typeof statusMap]?.variant || "default"} className="text-base px-4 py-2">
+                  {statusMap[room.status.name as keyof typeof statusMap]?.label || room.status.name}
                 </Badge>
               </div>
             </div>
@@ -189,13 +146,13 @@ export default function RoomDetail() {
             className="space-y-6"
           >
             <div>
-              <h1 className="text-4xl font-bold mb-2">{room.room_type}</h1>
-              <p className="text-xl text-muted-foreground">Phòng số {room.room_number}</p>
+              <h1 className="text-4xl font-bold mb-2">{room.roomType.name}</h1>
+              <p className="text-xl text-muted-foreground">Phòng số {room.roomNumber}</p>
             </div>
 
             <div className="flex items-baseline gap-2">
               <span className="text-5xl font-bold text-primary">
-                {Number(room.price).toLocaleString('vi-VN')}đ
+                {Number(room.roomType.pricePerNight).toLocaleString('vi-VN')}đ
               </span>
               <span className="text-xl text-muted-foreground">/ đêm</span>
             </div>
@@ -205,7 +162,7 @@ export default function RoomDetail() {
             <div>
               <h2 className="text-2xl font-semibold mb-4">Mô tả</h2>
               <p className="text-muted-foreground leading-relaxed">
-                {room.description || "Phòng được thiết kế hiện đại, thoải mái với đầy đủ tiện nghi."}
+                {room.roomType.description || "Phòng được thiết kế hiện đại, thoải mái với đầy đủ tiện nghi."}
               </p>
             </div>
 
@@ -221,28 +178,28 @@ export default function RoomDetail() {
                     <p className="font-semibold">{room.floor}</p>
                   </div>
                 </Card>
-                
+
                 <Card className="p-4 flex items-center gap-3">
                   <Users className="h-5 w-5 text-primary" />
                   <div>
                     <p className="text-sm text-muted-foreground">Sức chứa</p>
-                    <p className="font-semibold">{room.capacity} người</p>
+                    <p className="font-semibold">{room.roomType.capacity} người</p>
                   </div>
                 </Card>
-                
+
                 <Card className="p-4 flex items-center gap-3">
                   <Maximize className="h-5 w-5 text-primary" />
                   <div>
                     <p className="text-sm text-muted-foreground">Diện tích</p>
-                    <p className="font-semibold">{room.size} m²</p>
+                    <p className="font-semibold">{room.roomType.size} m²</p>
                   </div>
                 </Card>
-                
+
                 <Card className="p-4 flex items-center gap-3">
                   <Calendar className="h-5 w-5 text-primary" />
                   <div>
                     <p className="text-sm text-muted-foreground">Trạng thái</p>
-                    <p className="font-semibold">{statusMap[room.status as keyof typeof statusMap]?.label}</p>
+                    <p className="font-semibold">{statusMap[room.status.name as keyof typeof statusMap]?.label}</p>
                   </div>
                 </Card>
               </div>
@@ -253,7 +210,7 @@ export default function RoomDetail() {
             <div>
               <h2 className="text-2xl font-semibold mb-4">Tiện nghi</h2>
               <div className="grid grid-cols-2 gap-3">
-                {room.amenities?.map((amenity: string) => {
+                {room.roomType.amenities?.map((amenity: string) => {
                   const Icon = amenityIcons[amenity] || Coffee;
                   return (
                     <div key={amenity} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
@@ -272,11 +229,11 @@ export default function RoomDetail() {
                 onClick={() => setIsBookingModalOpen(true)}
                 size="lg"
                 className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 text-lg py-6"
-                disabled={room.status !== "available"}
+                disabled={room.status.name !== "AVAILABLE"}
               >
-                {room.status === "available" ? "Đặt phòng ngay" : "Phòng không khả dụng"}
+                {room.status.name === "AVAILABLE" ? "Đặt phòng ngay" : "Phòng không khả dụng"}
               </Button>
-              
+
               <Button
                 onClick={() => navigate("/rooms")}
                 variant="outline"
@@ -306,7 +263,7 @@ export default function RoomDetail() {
                 </h3>
                 <p className="text-muted-foreground">Từ 14:00</p>
               </div>
-              
+
               <div>
                 <h3 className="font-semibold mb-2 flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-primary" />
@@ -314,7 +271,7 @@ export default function RoomDetail() {
                 </h3>
                 <p className="text-muted-foreground">Trước 12:00</p>
               </div>
-              
+
               <div>
                 <h3 className="font-semibold mb-2 flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-primary" />
@@ -326,16 +283,20 @@ export default function RoomDetail() {
           </Card>
         </motion.div>
       </div>
-
-      {/* Footer */}
-      <footer className="bg-card border-t py-12 px-6">
-        <div className="container mx-auto text-center text-muted-foreground">
-          <p>© 2025 HotelPro — All rights reserved.</p>
-        </div>
-      </footer>
+      <Footer />
 
       {/* Booking Modal */}
-      <BookingModal open={isBookingModalOpen} onOpenChange={setIsBookingModalOpen} />
+      <BookingModal
+        open={isBookingModalOpen}
+        onOpenChange={setIsBookingModalOpen}
+        preSelectedRoom={room ? {
+          id: room.id,
+          roomNumber: room.roomNumber,
+          roomType: room.roomType.name,
+          pricePerNight: Number(room.roomType.pricePerNight) || 150,
+          imageUrl: room.images?.[0]?.imageUrl || "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=800",
+        } : undefined}
+      />
     </div>
   );
 }

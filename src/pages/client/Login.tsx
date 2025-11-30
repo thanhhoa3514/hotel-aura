@@ -8,6 +8,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import authService from "@/services/authService";
 
+import { useAuth } from "@/contexts/AuthContext";
+
 export default function Login() {
     const [showPassword, setShowPassword] = useState(false);
     const [email, setEmail] = useState("");
@@ -15,19 +17,22 @@ export default function Login() {
     const [rememberMe, setRememberMe] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
+    const { login, user } = useAuth();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
 
         try {
-            // Login - JWT will be automatically stored in httpOnly cookie by browser
-            const user = await authService.login({ email, password });
-            toast.success(`Chào mừng ${user.fullName}!`);
-            // Redirect to admin dashboard
-            navigate("/admin");
+            // Use AuthContext login to update user state
+            await login(email, password);
+            if (user?.role === "ADMIN") {
+                navigate("/admin");
+            } else {
+                navigate("/");
+            }
         } catch (error: any) {
-            // Error toast already shown by apiClient interceptor
+            // Error toast already shown by AuthContext
             console.error("Login failed:", error);
         } finally {
             setIsLoading(false);

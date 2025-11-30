@@ -119,9 +119,6 @@ export default function Register() {
                             <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                                 Tạo tài khoản mới
                             </h1>
-                            <p className="text-gray-600 dark:text-gray-300 mt-2">
-                                Đăng ký để bắt đầu trải nghiệm
-                            </p>
                         </div>
 
                         {/* Register form */}

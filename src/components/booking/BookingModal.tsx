@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Calendar as CalendarIcon, Users } from "lucide-react";
-import { useState } from "react";
+import { X, Calendar as CalendarIcon, Users, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,70 +9,183 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { DateRangeModal } from "./DateRangeModal";
 import { format } from "date-fns";
+import { roomService } from "@/services/roomService";
+import { reservationService } from "@/services/reservationService";
+import { RoomResponse } from "@/types/api.types";
 
 interface BookingModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  preSelectedRoom?: {
+    id: string;
+    roomNumber: string;
+    roomType: string;
+    pricePerNight: number;
+    imageUrl?: string;
+  };
 }
 
-export const BookingModal = ({ open, onOpenChange }: BookingModalProps) => {
+export const BookingModal = ({ open, onOpenChange, preSelectedRoom }: BookingModalProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
+  const [availableRooms, setAvailableRooms] = useState<RoomResponse[]>([]);
   const [formData, setFormData] = useState({
     guests: "1",
-    roomType: "",
+    roomId: preSelectedRoom?.id || "",
   });
+
+  // Load available rooms when dates change
+  useEffect(() => {
+    if (startDate && endDate) {
+      loadAvailableRooms();
+    }
+  }, [startDate, endDate]);
+
+  // Set preSelectedRoom when it changes
+  useEffect(() => {
+    if (preSelectedRoom) {
+      setFormData(prev => ({ ...prev, roomId: preSelectedRoom.id }));
+    }
+  }, [preSelectedRoom]);
+
+  const loadAvailableRooms = async () => {
+    if (!startDate || !endDate) return;
+
+    setIsCheckingAvailability(true);
+    try {
+      const checkIn = format(startDate, "yyyy-MM-dd");
+      const checkOut = format(endDate, "yyyy-MM-dd");
+      const rooms = await reservationService.getAvailableRooms(checkIn, checkOut);
+      setAvailableRooms(rooms);
+
+      // If preSelectedRoom is not in available rooms, reset selection
+      if (preSelectedRoom && !rooms.find(r => r.id === preSelectedRoom.id)) {
+        setFormData(prev => ({ ...prev, roomId: "" }));
+        toast({
+          title: "Phong khong kha dung",
+          description: `Phong ${preSelectedRoom.roomNumber} da duoc dat trong khoang thoi gian nay.`,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error loading available rooms:", error);
+      // Fallback to all rooms if API fails
+      try {
+        const allRooms = await roomService.getAllRooms();
+        setAvailableRooms(allRooms);
+      } catch (e) {
+        console.error("Error loading all rooms:", e);
+      }
+    } finally {
+      setIsCheckingAvailability(false);
+    }
+  };
 
   const handleDateConfirm = (start: Date, end: Date) => {
     setStartDate(start);
     setEndDate(end);
   };
 
-  const getRoomPrice = (roomType: string) => {
-    const prices: Record<string, number> = {
-      deluxe: 150,
-      executive: 280,
-      ocean: 200,
-    };
-    return prices[roomType] || 150;
+  const getSelectedRoom = () => {
+    if (preSelectedRoom && formData.roomId === preSelectedRoom.id) {
+      return preSelectedRoom;
+    }
+    const room = availableRooms.find(r => r.id === formData.roomId);
+    if (room) {
+      return {
+        id: room.id,
+        roomNumber: room.roomNumber,
+        roomType: room.roomType?.name || "Standard",
+        pricePerNight: room.roomType?.pricePerNight || 150,
+        imageUrl: room.images?.[0]?.imageUrl,
+      };
+    }
+    return null;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!startDate || !endDate) {
       toast({
-        title: "Vui lòng chọn ngày",
-        description: "Bạn cần chọn ngày nhận phòng và ngày trả phòng",
+        title: "Vui long chon ngay",
+        description: "Ban can chon ngay nhan phong va ngay tra phong",
         variant: "destructive",
       });
       return;
     }
 
-    if (!formData.roomType) {
+    if (!formData.roomId) {
       toast({
-        title: "Vui lòng chọn loại phòng",
+        title: "Vui long chon phong",
         variant: "destructive",
       });
       return;
     }
 
-    // Navigate to checkout page with booking data
-    onOpenChange(false);
-    navigate("/checkout", {
-      state: {
-        startDate,
-        endDate,
-        guests: formData.guests,
-        roomType: formData.roomType,
-        roomPrice: getRoomPrice(formData.roomType),
-        roomImage: "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=800",
-      },
-    });
+    setIsLoading(true);
+
+    try {
+      // Verify room availability before proceeding
+      const checkIn = format(startDate, "yyyy-MM-dd");
+      const checkOut = format(endDate, "yyyy-MM-dd");
+
+      const availabilityResponse = await reservationService.checkRoomAvailability({
+        roomIds: [formData.roomId],
+        checkIn,
+        checkOut,
+      });
+
+      if (!availabilityResponse.allAvailable) {
+        toast({
+          title: "Phong khong kha dung",
+          description: "Phong da duoc dat trong khoang thoi gian nay. Vui long chon phong khac hoac thay doi ngay.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        // Reload available rooms
+        loadAvailableRooms();
+        return;
+      }
+
+      const selectedRoom = getSelectedRoom();
+
+      // Navigate to checkout page with booking data
+      onOpenChange(false);
+      navigate("/checkout", {
+        state: {
+          startDate,
+          endDate,
+          guests: formData.guests,
+          roomId: formData.roomId,
+          roomType: selectedRoom?.roomType || "Standard",
+          roomNumber: selectedRoom?.roomNumber,
+          roomPrice: selectedRoom?.pricePerNight || 150,
+          roomImage: selectedRoom?.imageUrl || "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=800",
+        },
+      });
+    } catch (error) {
+      console.error("Error checking availability:", error);
+      toast({
+        title: "Co loi xay ra",
+        description: "Khong the kiem tra tinh kha dung cua phong. Vui long thu lai.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  const selectedRoom = getSelectedRoom();
+  const numberOfNights = startDate && endDate
+    ? Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24))
+    : 0;
+  const estimatedTotal = selectedRoom ? selectedRoom.pricePerNight * numberOfNights : 0;
 
   return (
     <AnimatePresence>
@@ -97,7 +210,7 @@ export const BookingModal = ({ open, onOpenChange }: BookingModalProps) => {
             <div className="bg-card rounded-2xl shadow-2xl border p-8">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-                  Book Your Stay
+                  Dat Phong
                 </h2>
                 <Button
                   variant="ghost"
@@ -114,13 +227,13 @@ export const BookingModal = ({ open, onOpenChange }: BookingModalProps) => {
                   <div>
                     <Label htmlFor="checkIn" className="flex items-center gap-2 mb-2">
                       <CalendarIcon className="h-4 w-4" />
-                      Ngày nhận phòng
+                      Ngay nhan phong
                     </Label>
                     <Input
                       id="checkIn"
                       type="text"
                       value={startDate ? format(startDate, "dd/MM/yyyy") : ""}
-                      placeholder="Chọn ngày"
+                      placeholder="Chon ngay"
                       onClick={() => setShowDatePicker(true)}
                       readOnly
                       required
@@ -131,13 +244,13 @@ export const BookingModal = ({ open, onOpenChange }: BookingModalProps) => {
                   <div>
                     <Label htmlFor="checkOut" className="flex items-center gap-2 mb-2">
                       <CalendarIcon className="h-4 w-4" />
-                      Ngày trả phòng
+                      Ngay tra phong
                     </Label>
                     <Input
                       id="checkOut"
                       type="text"
                       value={endDate ? format(endDate, "dd/MM/yyyy") : ""}
-                      placeholder="Chọn ngày"
+                      placeholder="Chon ngay"
                       onClick={() => setShowDatePicker(true)}
                       readOnly
                       required
@@ -149,7 +262,7 @@ export const BookingModal = ({ open, onOpenChange }: BookingModalProps) => {
                 <div>
                   <Label htmlFor="guests" className="flex items-center gap-2 mb-2">
                     <Users className="h-4 w-4" />
-                    Number of Guests
+                    So luong khach
                   </Label>
                   <Select
                     value={formData.guests}
@@ -161,41 +274,90 @@ export const BookingModal = ({ open, onOpenChange }: BookingModalProps) => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1">1 Guest</SelectItem>
-                      <SelectItem value="2">2 Guests</SelectItem>
-                      <SelectItem value="3">3 Guests</SelectItem>
-                      <SelectItem value="4">4 Guests</SelectItem>
-                      <SelectItem value="5+">5+ Guests</SelectItem>
+                      <SelectItem value="1">1 Khach</SelectItem>
+                      <SelectItem value="2">2 Khach</SelectItem>
+                      <SelectItem value="3">3 Khach</SelectItem>
+                      <SelectItem value="4">4 Khach</SelectItem>
+                      <SelectItem value="5+">5+ Khach</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div>
-                  <Label htmlFor="roomType" className="mb-2 block">
-                    Room Type
+                  <Label htmlFor="roomId" className="mb-2 block">
+                    Chon phong
+                    {isCheckingAvailability && (
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        (Dang kiem tra...)
+                      </span>
+                    )}
                   </Label>
                   <Select
-                    value={formData.roomType}
+                    value={formData.roomId}
                     onValueChange={(value) =>
-                      setFormData({ ...formData, roomType: value })
+                      setFormData({ ...formData, roomId: value })
                     }
+                    disabled={isCheckingAvailability}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select room type" />
+                      <SelectValue placeholder="Chon phong" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="deluxe">Deluxe Room - $150/night</SelectItem>
-                      <SelectItem value="executive">Executive Suite - $280/night</SelectItem>
-                      <SelectItem value="ocean">Ocean View Room - $200/night</SelectItem>
+                      {preSelectedRoom && (
+                        <SelectItem value={preSelectedRoom.id}>
+                          Phong {preSelectedRoom.roomNumber} - {preSelectedRoom.roomType} - ${preSelectedRoom.pricePerNight}/dem
+                        </SelectItem>
+                      )}
+                      {availableRooms
+                        .filter(room => room.id !== preSelectedRoom?.id)
+                        .map((room) => (
+                          <SelectItem key={room.id} value={room.id}>
+                            Phong {room.roomNumber} - {room.roomType?.name} - ${room.roomType?.pricePerNight}/dem
+                          </SelectItem>
+                        ))}
+                      {availableRooms.length === 0 && !preSelectedRoom && !isCheckingAvailability && startDate && endDate && (
+                        <SelectItem value="none" disabled>
+                          Khong co phong kha dung
+                        </SelectItem>
+                      )}
+                      {!startDate && !endDate && (
+                        <SelectItem value="none" disabled>
+                          Vui long chon ngay truoc
+                        </SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
 
+                {/* Price Summary */}
+                {selectedRoom && numberOfNights > 0 && (
+                  <div className="p-4 rounded-lg bg-muted/50 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">
+                        ${selectedRoom.pricePerNight} x {numberOfNights} dem
+                      </span>
+                      <span className="font-medium">${estimatedTotal}</span>
+                    </div>
+                    <div className="flex justify-between font-semibold">
+                      <span>Tong uoc tinh</span>
+                      <span className="text-primary">${estimatedTotal}</span>
+                    </div>
+                  </div>
+                )}
+
                 <Button
                   type="submit"
+                  disabled={isLoading || isCheckingAvailability}
                   className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 text-lg py-6"
                 >
-                  Confirm Booking
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Dang xu ly...
+                    </>
+                  ) : (
+                    "Tiep tuc dat phong"
+                  )}
                 </Button>
               </form>
             </div>
