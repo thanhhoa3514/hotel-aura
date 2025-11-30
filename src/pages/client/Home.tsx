@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Calendar, Users, MapPin, Star, Wifi, Coffee, Dumbbell, Car, Waves, Utensils, ChevronDown } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Calendar, Users, MapPin, Star, Wifi, Coffee, Dumbbell, Car, Waves, Utensils, ChevronDown, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BookingModal } from "@/components/booking/BookingModal";
 import { AuthModal } from "@/components/booking/AuthModal";
@@ -9,6 +10,7 @@ import { ServiceCard } from "@/components/booking/ServiceCard";
 import { TestimonialCarousel } from "@/components/booking/TestimonialCarousel";
 import { ContactForm } from "@/components/booking/ContactForm";
 import { Footer } from "@/pages/client/Footer";
+import { ClientNavbar } from "@/components/layout/ClientNavbar";
 
 const rooms = [
   {
@@ -47,6 +49,7 @@ const services = [
 ];
 
 export default function BookingLanding() {
+  const navigate = useNavigate();
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -68,54 +71,7 @@ export default function BookingLanding() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <motion.header
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        className="sticky top-0 z-50 backdrop-blur-md bg-card/80 border-b"
-      >
-        <div className="container mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent">
-              <span className="text-lg font-bold text-white">HP</span>
-            </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              HotelPro
-            </span>
-          </div>
-
-          <nav className="hidden md:flex items-center gap-8">
-            <button onClick={() => scrollToSection("hero")} className="text-foreground/80 hover:text-foreground transition-colors">
-              Home
-            </button>
-            <button onClick={() => scrollToSection("rooms")} className="text-foreground/80 hover:text-foreground transition-colors">
-              Rooms
-            </button>
-            <button onClick={() => scrollToSection("services")} className="text-foreground/80 hover:text-foreground transition-colors">
-              Services
-            </button>
-            <button onClick={() => scrollToSection("about")} className="text-foreground/80 hover:text-foreground transition-colors">
-              About
-            </button>
-            <button onClick={() => scrollToSection("contact")} className="text-foreground/80 hover:text-foreground transition-colors">
-              Contact
-            </button>
-          </nav>
-
-          <div className="flex items-center gap-3">
-            <Button
-              onClick={() => setIsAuthModalOpen(true)}
-              variant="outline"
-              className="hidden sm:flex"
-            >
-              Đăng nhập
-            </Button>
-            <Button onClick={() => setIsBookingModalOpen(true)} className="bg-gradient-to-r from-primary to-accent hover:opacity-90">
-              Book Now
-            </Button>
-          </div>
-        </div>
-      </motion.header>
+      <ClientNavbar currentPage="home" onBookingClick={() => setIsBookingModalOpen(true)} />
 
       {/* Hero Section */}
       <section id="hero" className="relative h-screen flex items-center justify-center overflow-hidden">
@@ -175,11 +131,27 @@ export default function BookingLanding() {
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
             {rooms.map((room, index) => (
               <RoomCard key={room.id} room={room} index={index} onBook={() => setIsBookingModalOpen(true)} />
             ))}
           </div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center"
+          >
+            <Button
+              onClick={() => navigate("/rooms")}
+              size="lg"
+              className="bg-gradient-to-r from-primary to-accent hover:opacity-90 group"
+            >
+              Xem tất cả phòng
+              <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+            </Button>
+          </motion.div>
         </div>
       </section>
 

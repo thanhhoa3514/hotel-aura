@@ -7,8 +7,11 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { roomService } from "@/services/roomService";
+import { RoomResponse } from "@/types/api.types";
+import { Footer } from "./Footer";
+import { ClientNavbar } from "@/components/layout/ClientNavbar";
 
 const amenityIcons: Record<string, any> = {
   "WiFi": Wifi,
@@ -23,14 +26,15 @@ const amenityIcons: Record<string, any> = {
 };
 
 const statusMap = {
-  available: { label: "Có sẵn", variant: "default" as const },
-  occupied: { label: "Đã đặt", variant: "secondary" as const },
-  maintenance: { label: "Bảo trì", variant: "destructive" as const },
+  AVAILABLE: { label: "Có sẵn", variant: "default" as const },
+  OCCUPIED: { label: "Đã đặt", variant: "secondary" as const },
+  MAINTENANCE: { label: "Bảo trì", variant: "destructive" as const },
+  CLEANING: { label: "Đang dọn", variant: "secondary" as const },
 };
 
 export default function ClientRooms() {
   const navigate = useNavigate();
-  const [rooms, setRooms] = useState<any[]>([]);
+  const [rooms, setRooms] = useState<RoomResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
@@ -43,12 +47,7 @@ export default function ClientRooms() {
   const fetchRooms = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase
-        .from("rooms")
-        .select("*")
-        .order("room_number", { ascending: true });
-
-      if (error) throw error;
+      const data = await roomService.getAllRooms();
       setRooms(data || []);
     } catch (error) {
       console.error("Error fetching rooms:", error);
@@ -60,31 +59,31 @@ export default function ClientRooms() {
 
   const filteredRooms = rooms
     .filter((room) => {
-      const matchesSearch = 
-        room.room_number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        room.room_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        room.description?.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesType = filterType === "all" || room.room_type.toLowerCase() === filterType.toLowerCase();
-      
+      const matchesSearch =
+        room.roomNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        room.roomType.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        room.roomType.description?.toLowerCase().includes(searchTerm.toLowerCase());
+
+      const matchesType = filterType === "all" || room.roomType.name.toLowerCase() === filterType.toLowerCase();
+
       return matchesSearch && matchesType;
     })
     .sort((a, b) => {
       switch (sortBy) {
         case "price-asc":
-          return Number(a.price) - Number(b.price);
+          return Number(a.roomType.pricePerNight) - Number(b.roomType.pricePerNight);
         case "price-desc":
-          return Number(b.price) - Number(a.price);
+          return Number(b.roomType.pricePerNight) - Number(a.roomType.pricePerNight);
         case "capacity-asc":
-          return a.capacity - b.capacity;
+          return a.roomType.capacity - b.roomType.capacity;
         case "capacity-desc":
-          return b.capacity - a.capacity;
+          return b.roomType.capacity - a.roomType.capacity;
         default:
           return 0;
       }
     });
 
-  const roomTypes = Array.from(new Set(rooms.map(room => room.room_type)));
+  const roomTypes = Array.from(new Set(rooms.map(room => room.roomType.name)));
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -92,36 +91,7 @@ export default function ClientRooms() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <motion.header
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        className="sticky top-0 z-50 backdrop-blur-md bg-card/80 border-b"
-      >
-        <div className="container mx-auto px-6 h-20 flex items-center justify-between">
-          <button onClick={() => navigate("/")} className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent">
-              <span className="text-lg font-bold text-white">HP</span>
-            </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              HotelPro
-            </span>
-          </button>
-
-          <nav className="hidden md:flex items-center gap-8">
-            <button onClick={() => navigate("/")} className="text-foreground/80 hover:text-foreground transition-colors">
-              Trang chủ
-            </button>
-            <button onClick={() => navigate("/rooms")} className="text-foreground font-semibold transition-colors">
-              Phòng
-            </button>
-          </nav>
-
-          <Button onClick={() => navigate("/")} className="bg-gradient-to-r from-primary to-accent hover:opacity-90">
-            Đặt phòng
-          </Button>
-        </div>
-      </motion.header>
+      <ClientNavbar currentPage="rooms" onBookingClick={() => navigate("/")} />
 
       {/* Hero Section */}
       <section className="relative h-[40vh] flex items-center justify-center overflow-hidden">
@@ -168,7 +138,7 @@ export default function ClientRooms() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="md:w-1/3"
             />
-            
+
             <Select value={filterType} onValueChange={setFilterType}>
               <SelectTrigger className="md:w-1/4">
                 <SelectValue placeholder="Loại phòng" />
@@ -214,7 +184,7 @@ export default function ClientRooms() {
               <div className="mb-6 text-muted-foreground">
                 Tìm thấy {filteredRooms.length} phòng
               </div>
-              
+
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
                 {filteredRooms.map((room, index) => (
                   <motion.div
@@ -226,13 +196,13 @@ export default function ClientRooms() {
                     <Card className="overflow-hidden hover:shadow-xl transition-all duration-300 group cursor-pointer h-full flex flex-col">
                       <div className="relative h-64 overflow-hidden" onClick={() => navigate(`/rooms/${room.id}`)}>
                         <img
-                          src={room.image_url || "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=800"}
-                          alt={room.room_type}
+                          src={room.images?.[0]?.imageUrl || "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=800"}
+                          alt={room.roomType.name}
                           className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                         />
                         <div className="absolute top-4 right-4">
-                          <Badge variant={statusMap[room.status as keyof typeof statusMap]?.variant || "default"}>
-                            {statusMap[room.status as keyof typeof statusMap]?.label || room.status}
+                          <Badge variant={statusMap[room.status.name as keyof typeof statusMap]?.variant || "default"}>
+                            {statusMap[room.status.name as keyof typeof statusMap]?.label || room.status.name}
                           </Badge>
                         </div>
                       </div>
@@ -240,19 +210,19 @@ export default function ClientRooms() {
                       <div className="p-6 flex-1 flex flex-col">
                         <div className="flex items-start justify-between mb-3">
                           <div>
-                            <h3 className="text-xl font-bold mb-1">{room.room_type}</h3>
-                            <p className="text-sm text-muted-foreground">Phòng {room.room_number}</p>
+                            <h3 className="text-xl font-bold mb-1">{room.roomType.name}</h3>
+                            <p className="text-sm text-muted-foreground">Phòng {room.roomNumber}</p>
                           </div>
                           <div className="text-right">
                             <div className="text-2xl font-bold text-primary">
-                              {Number(room.price).toLocaleString('vi-VN')}đ
+                              {Number(room.roomType.pricePerNight).toLocaleString('vi-VN')}đ
                             </div>
                             <div className="text-xs text-muted-foreground">/ đêm</div>
                           </div>
                         </div>
 
                         <p className="text-muted-foreground mb-4 line-clamp-2 flex-1">
-                          {room.description}
+                          {room.roomType.description}
                         </p>
 
                         <div className="grid grid-cols-3 gap-3 mb-4 text-sm">
@@ -262,16 +232,16 @@ export default function ClientRooms() {
                           </div>
                           <div className="flex items-center gap-2">
                             <Users className="h-4 w-4 text-primary" />
-                            <span>{room.capacity} người</span>
+                            <span>{room.roomType.capacity} người</span>
                           </div>
                           <div className="flex items-center gap-2">
                             <Maximize className="h-4 w-4 text-primary" />
-                            <span>{room.size}m²</span>
+                            <span>{room.roomType.size}m²</span>
                           </div>
                         </div>
 
                         <div className="flex flex-wrap gap-2 mb-4">
-                          {room.amenities?.slice(0, 4).map((amenity: string) => {
+                          {room.roomType.amenities?.slice(0, 4).map((amenity: string) => {
                             const Icon = amenityIcons[amenity] || Coffee;
                             return (
                               <div key={amenity} className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -280,17 +250,17 @@ export default function ClientRooms() {
                               </div>
                             );
                           })}
-                          {room.amenities?.length > 4 && (
-                            <span className="text-xs text-muted-foreground">+{room.amenities.length - 4} khác</span>
+                          {room.roomType.amenities && room.roomType.amenities.length > 4 && (
+                            <span className="text-xs text-muted-foreground">+{room.roomType.amenities.length - 4} khác</span>
                           )}
                         </div>
 
-                        <Button 
+                        <Button
                           onClick={() => navigate(`/rooms/${room.id}`)}
                           className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90"
-                          disabled={room.status !== "available"}
+                          disabled={room.status.name !== "AVAILABLE"}
                         >
-                          {room.status === "available" ? "Xem chi tiết" : "Không khả dụng"}
+                          {room.status.name === "AVAILABLE" ? "Xem chi tiết" : "Không khả dụng"}
                         </Button>
                       </div>
                     </Card>
@@ -311,13 +281,7 @@ export default function ClientRooms() {
       >
         <ChevronDown className="h-6 w-6 rotate-180" />
       </motion.button>
-
-      {/* Footer */}
-      <footer className="bg-card border-t py-12 px-6 mt-20">
-        <div className="container mx-auto text-center text-muted-foreground">
-          <p>© 2025 HotelPro — All rights reserved.</p>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

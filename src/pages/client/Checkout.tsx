@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ChevronLeft, CreditCard, Calendar, Users, Info, Check, Wallet } from "lucide-react";
+import { ChevronLeft, CreditCard, Calendar, Users, Info, Check, Wallet, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -10,6 +10,8 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { reservationService } from "@/services/reservationService";
 import { format } from "date-fns";
 
 interface CheckoutState {
@@ -17,23 +19,27 @@ interface CheckoutState {
   endDate?: Date;
   guests?: string;
   roomType?: string;
+  roomId?: string;
   roomPrice?: number;
   roomImage?: string;
+  roomNumber?: string;
 }
 
 export default function Checkout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const { user, isAuthenticated } = useAuth();
   const bookingData = (location.state as CheckoutState) || {};
-  
+
   const [selectedPayment, setSelectedPayment] = useState("mastercard");
   const [showAddPayment, setShowAddPayment] = useState(false);
   const [showTripDetails, setShowTripDetails] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Calculate pricing
   const nightlyRate = bookingData.roomPrice || 150;
-  const numberOfNights = bookingData.startDate && bookingData.endDate 
+  const numberOfNights = bookingData.startDate && bookingData.endDate
     ? Math.ceil((bookingData.endDate.getTime() - bookingData.startDate.getTime()) / (1000 * 60 * 60 * 24))
     : 1;
   const subtotal = nightlyRate * numberOfNights;
@@ -41,12 +47,100 @@ export default function Checkout() {
   const serviceFee = subtotal * 0.1;
   const total = subtotal + cleaningFee + serviceFee;
 
-  const handlePayment = () => {
-    toast({
-      title: "Đặt phòng thành công!",
-      description: "Bạn sẽ nhận được email xác nhận trong giây lát.",
-    });
-    setTimeout(() => navigate("/"), 2000);
+  const handlePayment = async () => {
+    // Check if user is authenticated
+    if (!isAuthenticated || !user) {
+      toast({
+        title: "Yeu cau dang nhap",
+        description: "Ban can dang nhap de dat phong.",
+        variant: "destructive",
+      });
+      navigate("/login", { state: { from: location } });
+      return;
+    }
+
+    // Validate booking data
+    if (!bookingData.startDate || !bookingData.endDate) {
+      toast({
+        title: "Thieu thong tin",
+        description: "Vui long chon ngay nhan phong va tra phong.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!bookingData.roomId) {
+      toast({
+        title: "Thieu thong tin phong",
+        description: "Vui long chon phong truoc khi dat.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Format dates to ISO string (YYYY-MM-DD)
+      const checkInDate = format(bookingData.startDate, "yyyy-MM-dd");
+      const checkOutDate = format(bookingData.endDate, "yyyy-MM-dd");
+
+      // First, check room availability
+      const availabilityResponse = await reservationService.checkRoomAvailability({
+        roomIds: [bookingData.roomId],
+        checkIn: checkInDate,
+        checkOut: checkOutDate,
+      });
+
+      if (!availabilityResponse.allAvailable) {
+        toast({
+          title: "Phong khong kha dung",
+          description: "Phong da duoc dat trong khoang thoi gian nay. Vui long chon ngay khac.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Create reservation
+      const reservation = await reservationService.createReservation({
+        keycloakUserId: user.id,
+        roomIds: [bookingData.roomId],
+        checkIn: checkInDate,
+        checkOut: checkOutDate,
+        status: "PENDING",
+      });
+
+      toast({
+        title: "Dat phong thanh cong!",
+        description: `Ma dat phong: ${reservation.id.substring(0, 8).toUpperCase()}. Ban se nhan duoc email xac nhan trong giay lat.`,
+      });
+
+      // Navigate to success page or home
+      setTimeout(() => {
+        navigate("/", {
+          state: {
+            reservationSuccess: true,
+            reservationId: reservation.id
+          }
+        });
+      }, 2000);
+
+    } catch (error: any) {
+      console.error("Reservation error:", error);
+
+      // Error is already handled by apiClient interceptor
+      // But we can add additional handling here if needed
+      const errorMessage = error?.response?.data?.message || "Co loi xay ra khi dat phong. Vui long thu lai.";
+
+      toast({
+        title: "Dat phong that bai",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const savedPayments = [
@@ -85,6 +179,13 @@ export default function Checkout() {
               HotelPro
             </span>
           </button>
+
+          {/* User info */}
+          {isAuthenticated && user && (
+            <div className="text-sm text-muted-foreground">
+              Dang nhap: <span className="font-medium text-foreground">{user.fullName}</span>
+            </div>
+          )}
         </div>
       </motion.header>
 
@@ -96,7 +197,7 @@ export default function Checkout() {
           className="gap-2"
         >
           <ChevronLeft className="h-4 w-4" />
-          Xác nhận & thanh toán
+          Xac nhan va thanh toan
         </Button>
       </div>
 
@@ -105,28 +206,53 @@ export default function Checkout() {
         <div className="grid lg:grid-cols-[1fr,400px] gap-8">
           {/* Left Column - Payment & Policies */}
           <div className="space-y-8">
+            {/* Authentication Warning */}
+            {!isAuthenticated && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <Card className="p-6 border-amber-500/50 bg-amber-500/10">
+                  <div className="flex items-start gap-4">
+                    <Info className="h-6 w-6 text-amber-500 shrink-0" />
+                    <div>
+                      <h3 className="font-semibold text-amber-500">Yeu cau dang nhap</h3>
+                      <p className="text-muted-foreground mt-1">
+                        Ban can dang nhap de hoan tat dat phong.{" "}
+                        <button
+                          onClick={() => navigate("/login", { state: { from: location } })}
+                          className="text-primary underline"
+                        >
+                          Dang nhap ngay
+                        </button>
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+              </motion.div>
+            )}
+
             {/* Payment Method */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
             >
               <Card className="p-6">
-                <h2 className="text-2xl font-bold mb-6">Phương thức thanh toán</h2>
-                
+                <h2 className="text-2xl font-bold mb-6">Phuong thuc thanh toan</h2>
+
                 <div className="space-y-4">
                   <div className="space-y-3">
-                    <p className="text-sm font-medium text-muted-foreground">Thẻ đã lưu</p>
+                    <p className="text-sm font-medium text-muted-foreground">The da luu</p>
                     <RadioGroup value={selectedPayment} onValueChange={setSelectedPayment}>
                       <div className="grid grid-cols-2 lg:grid-cols-1 gap-3">
                         {savedPayments.map((payment) => (
                           <label
                             key={payment.id}
                             htmlFor={payment.id}
-                            className={`flex flex-col gap-2 p-4 rounded-lg border-2 cursor-pointer transition-all hover:scale-[1.02] ${
-                              selectedPayment === payment.id
-                                ? "border-primary bg-accent/50"
-                                : "border-border hover:border-primary/50"
-                            }`}
+                            className={`flex flex-col gap-2 p-4 rounded-lg border-2 cursor-pointer transition-all hover:scale-[1.02] ${selectedPayment === payment.id
+                              ? "border-primary bg-accent/50"
+                              : "border-border hover:border-primary/50"
+                              }`}
                           >
                             <div className="flex items-center justify-between">
                               {getPaymentIcon(payment.icon)}
@@ -149,7 +275,7 @@ export default function Checkout() {
                     onClick={() => setShowAddPayment(!showAddPayment)}
                   >
                     <CreditCard className="h-4 w-4" />
-                    Thêm phương thức thanh toán mới
+                    Them phuong thuc thanh toan moi
                   </Button>
 
                   {showAddPayment && (
@@ -159,12 +285,12 @@ export default function Checkout() {
                       className="space-y-4 pt-4"
                     >
                       <div>
-                        <Label htmlFor="cardNumber">Số thẻ</Label>
+                        <Label htmlFor="cardNumber">So the</Label>
                         <Input id="cardNumber" placeholder="1234 5678 9012 3456" />
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <Label htmlFor="expiry">Ngày hết hạn</Label>
+                          <Label htmlFor="expiry">Ngay het han</Label>
                           <Input id="expiry" placeholder="MM/YY" />
                         </div>
                         <div>
@@ -185,17 +311,17 @@ export default function Checkout() {
               transition={{ delay: 0.1 }}
             >
               <Card className="p-6">
-                <h2 className="text-xl font-bold mb-4">Chính sách hủy phòng</h2>
+                <h2 className="text-xl font-bold mb-4">Chinh sach huy phong</h2>
                 <div className="space-y-3">
                   <div className="flex items-start gap-3">
                     <Check className="h-5 w-5 text-primary mt-0.5" />
                     <p className="text-muted-foreground">
-                      Miễn phí hủy phòng trước ngày 30 tháng 11.
+                      Mien phi huy phong truoc ngay 30 thang 11.
                     </p>
                   </div>
                   <p className="text-muted-foreground">
-                    Sau đó, việc đặt phòng sẽ không được hoàn tiền.{" "}
-                    <button className="text-primary underline">Tìm hiểu thêm</button>
+                    Sau do, viec dat phong se khong duoc hoan tien.{" "}
+                    <button className="text-primary underline">Tim hieu them</button>
                   </p>
                 </div>
               </Card>
@@ -208,18 +334,18 @@ export default function Checkout() {
               transition={{ delay: 0.2 }}
             >
               <Card className="p-6">
-                <h2 className="text-xl font-bold mb-4">Quy tắc chung</h2>
+                <h2 className="text-xl font-bold mb-4">Quy tac chung</h2>
                 <p className="text-muted-foreground mb-4">
-                  Chúng tôi yêu cầu mọi khách nhớ một vài điều đơn giản về những gì tạo nên một vị khách tuyệt vời.
+                  Chung toi yeu cau moi khach nho mot vai dieu don gian ve nhung gi tao nen mot vi khach tuyet voi.
                 </p>
                 <ul className="space-y-2 text-muted-foreground">
                   <li className="flex items-start gap-2">
-                    <span className="text-primary mt-1">•</span>
-                    <span>Tuân thủ nội quy nhà</span>
+                    <span className="text-primary mt-1">-</span>
+                    <span>Tuan thu noi quy nha</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-primary mt-1">•</span>
-                    <span>Đối xử với nhà của chủ nhà như nhà của bạn</span>
+                    <span className="text-primary mt-1">-</span>
+                    <span>Doi xu voi nha cua chu nha nhu nha cua ban</span>
                   </li>
                 </ul>
               </Card>
@@ -245,20 +371,27 @@ export default function Checkout() {
                       {bookingData.roomType || "Deluxe Room"}
                     </Badge>
                   </div>
+                  {bookingData.roomNumber && (
+                    <div className="absolute top-3 right-3">
+                      <Badge variant="secondary" className="bg-background/90 backdrop-blur-sm">
+                        Phong {bookingData.roomNumber}
+                      </Badge>
+                    </div>
+                  )}
                 </div>
 
                 {/* Trip Info */}
                 <div className="space-y-4 mb-6">
                   <div>
-                    <h3 className="font-bold text-lg mb-1">Nơi lưu trú</h3>
-                    <p className="text-muted-foreground">HotelPro, Việt Nam</p>
+                    <h3 className="font-bold text-lg mb-1">Noi luu tru</h3>
+                    <p className="text-muted-foreground">HotelPro, Viet Nam</p>
                   </div>
 
                   <button
                     onClick={() => setShowTripDetails(!showTripDetails)}
                     className="flex items-center justify-between w-full text-sm text-primary hover:underline"
                   >
-                    <span>{showTripDetails ? "Ẩn" : "Xem"} chi tiết chuyến đi</span>
+                    <span>{showTripDetails ? "An" : "Xem"} chi tiet chuyen di</span>
                     <ChevronLeft className={`h-4 w-4 transition-transform ${showTripDetails ? "rotate-90" : "-rotate-90"}`} />
                   </button>
 
@@ -273,7 +406,7 @@ export default function Checkout() {
                         <div>
                           <p className="font-medium">Check-In</p>
                           <p className="text-muted-foreground">
-                            {bookingData.startDate ? format(bookingData.startDate, "E, MMM dd") : "Chưa chọn"}
+                            {bookingData.startDate ? format(bookingData.startDate, "E, MMM dd") : "Chua chon"}
                           </p>
                         </div>
                       </div>
@@ -282,15 +415,15 @@ export default function Checkout() {
                         <div>
                           <p className="font-medium">Check-Out</p>
                           <p className="text-muted-foreground">
-                            {bookingData.endDate ? format(bookingData.endDate, "E, MMM dd") : "Chưa chọn"}
+                            {bookingData.endDate ? format(bookingData.endDate, "E, MMM dd") : "Chua chon"}
                           </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-3 text-sm">
                         <Users className="h-4 w-4 text-primary" />
                         <div>
-                          <p className="font-medium">Khách</p>
-                          <p className="text-muted-foreground">{bookingData.guests || "1"} người</p>
+                          <p className="font-medium">Khach</p>
+                          <p className="text-muted-foreground">{bookingData.guests || "1"} nguoi</p>
                         </div>
                       </div>
                     </motion.div>
@@ -301,19 +434,19 @@ export default function Checkout() {
 
                 {/* Pricing Breakdown */}
                 <div className="space-y-4">
-                  <h3 className="font-bold text-lg">Chi tiết giá</h3>
-                  
+                  <h3 className="font-bold text-lg">Chi tiet gia</h3>
+
                   <div className="space-y-3">
                     <div className="flex justify-between text-muted-foreground">
-                      <span>${nightlyRate.toLocaleString()} x {numberOfNights} đêm</span>
+                      <span>${nightlyRate.toLocaleString()} x {numberOfNights} dem</span>
                       <span>${subtotal.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-muted-foreground">
-                      <span>Phí vệ sinh</span>
+                      <span>Phi ve sinh</span>
                       <span>${cleaningFee.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-muted-foreground">
-                      <span>Phí dịch vụ</span>
+                      <span>Phi dich vu</span>
                       <span>${serviceFee.toLocaleString()}</span>
                     </div>
                   </div>
@@ -321,22 +454,30 @@ export default function Checkout() {
                   <Separator />
 
                   <div className="flex justify-between font-bold text-lg">
-                    <span>Tổng trước thuế</span>
+                    <span>Tong truoc thue</span>
                     <span>${total.toLocaleString()}</span>
                   </div>
                 </div>
 
                 <Button
                   onClick={handlePayment}
+                  disabled={isLoading || !isAuthenticated}
                   className="w-full mt-6 bg-gradient-to-r from-primary to-accent hover:opacity-90 text-lg py-6"
                 >
-                  Xác nhận & thanh toán ${total.toLocaleString()}
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Dang xu ly...
+                    </>
+                  ) : (
+                    `Xac nhan va thanh toan $${total.toLocaleString()}`
+                  )}
                 </Button>
 
                 <div className="flex items-start gap-2 mt-4 text-xs text-muted-foreground">
                   <Info className="h-4 w-4 shrink-0 mt-0.5" />
                   <p>
-                    Bạn sẽ không bị tính phí ngay bây giờ. Chúng tôi sẽ gửi email xác nhận và chi tiết thanh toán.
+                    Ban se khong bi tinh phi ngay bay gio. Chung toi se gui email xac nhan va chi tiet thanh toan.
                   </p>
                 </div>
               </Card>
