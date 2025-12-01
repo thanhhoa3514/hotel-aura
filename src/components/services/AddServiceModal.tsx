@@ -7,7 +7,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 
 interface AddServiceModalProps {
@@ -51,20 +50,15 @@ export const AddServiceModal = ({ open, onOpenChange, onSuccess }: AddServiceMod
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.from("services").insert({
-        name: formData.name,
-        description: formData.description,
-        price: parseFloat(formData.price),
-        category: formData.category,
-        icon: formData.icon,
-        is_active: formData.is_active,
-      });
+      // TODO: Replace with backend API call when Service API is implemented
+      console.log('Add service (stub):', formData);
 
-      if (error) throw error;
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       toast({
-        title: "Thành công!",
-        description: "Dịch vụ đã được thêm.",
+        title: "Thông báo",
+        description: "Tính năng này đang được phát triển. Service API sẽ được triển khai sau.",
       });
 
       setFormData({

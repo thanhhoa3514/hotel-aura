@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+
 import { Plus, Search, Sparkles, Coffee, Car, Music, Briefcase, Star, Loader2 } from "lucide-react";
 import { AddServiceModal } from "@/components/services/AddServiceModal";
 import { ServiceDetailModal } from "@/components/services/ServiceDetailModal";
@@ -39,14 +39,15 @@ const Services = () => {
 
   const fetchServices = async () => {
     try {
-      const { data, error } = await supabase
-        .from("services")
-        .select("*")
-        .order("created_at", { ascending: false });
+      // TODO: Replace with backend API call when Service API is implemented
+      console.log('Fetch services (stub)');
 
-      if (error) throw error;
-      setServices(data || []);
-      setFilteredServices(data || []);
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Return empty array for now
+      setServices([]);
+      setFilteredServices([]);
     } catch (error: any) {
       toast({
         title: "Lỗi",
@@ -190,7 +191,7 @@ const Services = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredServices.map((service) => {
               const IconComponent = iconMap[service.icon || "Star"] || Star;
-              
+
               return (
                 <Card
                   key={service.id}
@@ -198,7 +199,7 @@ const Services = () => {
                   onClick={() => handleServiceClick(service)}
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  
+
                   <div className="relative p-6 space-y-4">
                     <div className="flex items-start justify-between">
                       <div className="p-3 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20">

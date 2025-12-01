@@ -7,7 +7,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Trash2 } from "lucide-react";
 import {
   AlertDialog,
@@ -84,27 +83,19 @@ export const ServiceDetailModal = ({ open, onOpenChange, service, onSuccess }: S
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!service) return;
-    
+
     setIsLoading(true);
 
     try {
-      const { error } = await supabase
-        .from("services")
-        .update({
-          name: formData.name,
-          description: formData.description,
-          price: parseFloat(formData.price),
-          category: formData.category,
-          icon: formData.icon,
-          is_active: formData.is_active,
-        })
-        .eq("id", service.id);
+      // TODO: Replace with backend API call when Service API is implemented
+      console.log('Update service (stub):', service.id, formData);
 
-      if (error) throw error;
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       toast({
-        title: "Thành công!",
-        description: "Dịch vụ đã được cập nhật.",
+        title: "Thông báo",
+        description: "Tính năng này đang được phát triển. Service API sẽ được triển khai sau.",
       });
 
       onOpenChange(false);
@@ -122,20 +113,19 @@ export const ServiceDetailModal = ({ open, onOpenChange, service, onSuccess }: S
 
   const handleDelete = async () => {
     if (!service) return;
-    
+
     setIsLoading(true);
 
     try {
-      const { error } = await supabase
-        .from("services")
-        .delete()
-        .eq("id", service.id);
+      // TODO: Replace with backend API call when Service API is implemented
+      console.log('Delete service (stub):', service.id);
 
-      if (error) throw error;
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       toast({
-        title: "Đã xóa!",
-        description: "Dịch vụ đã được xóa.",
+        title: "Thông báo",
+        description: "Tính năng này đang được phát triển. Service API sẽ được triển khai sau.",
       });
 
       setShowDeleteDialog(false);
