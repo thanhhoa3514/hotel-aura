@@ -17,7 +17,7 @@ export default function Login() {
     const [rememberMe, setRememberMe] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
-    const { login, user } = useAuth();
+    const { login, loginWithSocial, user } = useAuth();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -25,8 +25,11 @@ export default function Login() {
 
         try {
             // Use AuthContext login to update user state
-            await login(email, password);
-            if (user?.role === "ADMIN") {
+            const userInfo = await login(email, password);
+
+            console.log(userInfo);
+            // Use the returned userInfo for immediate navigation
+            if (userInfo.role === "ADMIN") {
                 navigate("/admin");
             } else {
                 navigate("/");
@@ -84,11 +87,9 @@ export default function Login() {
                             >
                                 <Hotel className="w-8 h-8 text-white" />
                             </motion.div>
-                            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                                Chào mừng trở lại
-                            </h1>
+
                             <p className="text-gray-600 dark:text-gray-300 mt-2">
-                                Đăng nhập để tiếp tục đặt phòng
+                                Đăng nhập
                             </p>
                         </div>
 
@@ -198,6 +199,7 @@ export default function Login() {
                             <Button
                                 type="button"
                                 variant="outline"
+                                onClick={() => loginWithSocial('google')}
                                 className="h-11 bg-white/50 dark:bg-gray-700/50 hover:bg-white dark:hover:bg-gray-700 border-gray-200 dark:border-gray-600 rounded-xl transition-all"
                             >
                                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
@@ -223,6 +225,7 @@ export default function Login() {
                             <Button
                                 type="button"
                                 variant="outline"
+                                onClick={() => loginWithSocial('facebook')}
                                 className="h-11 bg-white/50 dark:bg-gray-700/50 hover:bg-white dark:hover:bg-gray-700 border-gray-200 dark:border-gray-600 rounded-xl transition-all"
                             >
                                 <svg className="w-5 h-5 mr-2" fill="#1877F2" viewBox="0 0 24 24">
