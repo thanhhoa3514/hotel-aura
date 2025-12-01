@@ -22,10 +22,12 @@ interface BookingModalProps {
     roomType: string;
     pricePerNight: number;
     imageUrl?: string;
+
   };
+  isFixedRoom?: boolean;
 }
 
-export const BookingModal = ({ open, onOpenChange, preSelectedRoom }: BookingModalProps) => {
+export const BookingModal = ({ open, onOpenChange, preSelectedRoom, isFixedRoom = false }: BookingModalProps) => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -205,7 +207,7 @@ export const BookingModal = ({ open, onOpenChange, preSelectedRoom }: BookingMod
             initial={{ opacity: 0, scale: 0.95, x: '-50%', y: 'calc(-50% + 20px)' }}
             animate={{ opacity: 1, scale: 1, x: '-50%', y: '-50%' }}
             exit={{ opacity: 0, scale: 0.95, x: '-50%', y: 'calc(-50% + 20px)' }}
-            className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-lg max-h-[90vh] overflow-y-auto"
+            className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-2xl max-h-[90vh] overflow-y-auto"
           >
             <div className="bg-card rounded-2xl shadow-2xl border p-8">
               <div className="flex items-center justify-between mb-6">
@@ -223,127 +225,137 @@ export const BookingModal = ({ open, onOpenChange, preSelectedRoom }: BookingMod
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="checkIn" className="flex items-center gap-2 mb-2">
-                      <CalendarIcon className="h-4 w-4" />
-                      Ngay nhan phong
-                    </Label>
-                    <Input
-                      id="checkIn"
-                      type="text"
-                      value={startDate ? format(startDate, "dd/MM/yyyy") : ""}
-                      placeholder="Chon ngay"
-                      onClick={() => setShowDatePicker(true)}
-                      readOnly
-                      required
-                      className="cursor-pointer hover:bg-accent/50 transition-colors"
-                    />
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="checkIn" className="flex items-center gap-2 mb-2">
+                          <CalendarIcon className="h-4 w-4" />
+                          Ngay nhan phong
+                        </Label>
+                        <Input
+                          id="checkIn"
+                          type="text"
+                          value={startDate ? format(startDate, "dd/MM/yyyy") : ""}
+                          placeholder="Chon ngay"
+                          onClick={() => setShowDatePicker(true)}
+                          readOnly
+                          required
+                          className="cursor-pointer hover:bg-accent/50 transition-colors"
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="checkOut" className="flex items-center gap-2 mb-2">
+                          <CalendarIcon className="h-4 w-4" />
+                          Ngay tra phong
+                        </Label>
+                        <Input
+                          id="checkOut"
+                          type="text"
+                          value={endDate ? format(endDate, "dd/MM/yyyy") : ""}
+                          placeholder="Chon ngay"
+                          onClick={() => setShowDatePicker(true)}
+                          readOnly
+                          required
+                          className="cursor-pointer hover:bg-accent/50 transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="guests" className="flex items-center gap-2 mb-2">
+                        <Users className="h-4 w-4" />
+                        So luong khach
+                      </Label>
+                      <Select
+                        value={formData.guests}
+                        onValueChange={(value) =>
+                          setFormData({ ...formData, guests: value })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">1 Khach</SelectItem>
+                          <SelectItem value="2">2 Khach</SelectItem>
+                          <SelectItem value="3">3 Khach</SelectItem>
+                          <SelectItem value="4">4 Khach</SelectItem>
+                          <SelectItem value="5+">5+ Khach</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
-                  <div>
-                    <Label htmlFor="checkOut" className="flex items-center gap-2 mb-2">
-                      <CalendarIcon className="h-4 w-4" />
-                      Ngay tra phong
-                    </Label>
-                    <Input
-                      id="checkOut"
-                      type="text"
-                      value={endDate ? format(endDate, "dd/MM/yyyy") : ""}
-                      placeholder="Chon ngay"
-                      onClick={() => setShowDatePicker(true)}
-                      readOnly
-                      required
-                      className="cursor-pointer hover:bg-accent/50 transition-colors"
-                    />
-                  </div>
-                </div>
+                  <div className="space-y-4">
+                    <Label>Phòng đã chọn</Label>
 
-                <div>
-                  <Label htmlFor="guests" className="flex items-center gap-2 mb-2">
-                    <Users className="h-4 w-4" />
-                    So luong khach
-                  </Label>
-                  <Select
-                    value={formData.guests}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, guests: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">1 Khach</SelectItem>
-                      <SelectItem value="2">2 Khach</SelectItem>
-                      <SelectItem value="3">3 Khach</SelectItem>
-                      <SelectItem value="4">4 Khach</SelectItem>
-                      <SelectItem value="5+">5+ Khach</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="roomId" className="mb-2 block">
-                    Chon phong
-                    {isCheckingAvailability && (
-                      <span className="ml-2 text-xs text-muted-foreground">
-                        (Dang kiem tra...)
-                      </span>
+                    {isFixedRoom && preSelectedRoom ? (
+                      // Nếu là Fixed Room -> Chỉ hiện thông tin tĩnh, không cho chọn lại
+                      <div className="p-4 border rounded-lg bg-muted/50 flex justify-between items-center">
+                        <div>
+                          <p className="font-bold">{preSelectedRoom.roomType}</p>
+                          <p className="text-sm text-muted-foreground">Phòng {preSelectedRoom.roomNumber}</p>
+                        </div>
+                        <p className="font-bold text-primary">${preSelectedRoom.pricePerNight}/đêm</p>
+                      </div>
+                    ) : (
+                      <Select
+                        value={formData.roomId}
+                        onValueChange={(value) =>
+                          setFormData({ ...formData, roomId: value })
+                        }
+                        disabled={isCheckingAvailability}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Chon phong" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {preSelectedRoom && (
+                            <SelectItem value={preSelectedRoom.id}>
+                              Phong {preSelectedRoom.roomNumber} - {preSelectedRoom.roomType} - ${preSelectedRoom.pricePerNight}/dem
+                            </SelectItem>
+                          )}
+                          {availableRooms
+                            .filter(room => room.id !== preSelectedRoom?.id)
+                            .map((room) => (
+                              <SelectItem key={room.id} value={room.id}>
+                                Phong {room.roomNumber} - {room.roomType?.name} - ${room.roomType?.pricePerNight}/dem
+                              </SelectItem>
+                            ))}
+                          {availableRooms.length === 0 && !preSelectedRoom && !isCheckingAvailability && startDate && endDate && (
+                            <SelectItem value="none" disabled>
+                              Khong co phong kha dung
+                            </SelectItem>
+                          )}
+                          {!startDate && !endDate && (
+                            <SelectItem value="none" disabled>
+                              Vui long chon ngay truoc
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
                     )}
-                  </Label>
-                  <Select
-                    value={formData.roomId}
-                    onValueChange={(value) =>
-                      setFormData({ ...formData, roomId: value })
-                    }
-                    disabled={isCheckingAvailability}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Chon phong" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {preSelectedRoom && (
-                        <SelectItem value={preSelectedRoom.id}>
-                          Phong {preSelectedRoom.roomNumber} - {preSelectedRoom.roomType} - ${preSelectedRoom.pricePerNight}/dem
-                        </SelectItem>
-                      )}
-                      {availableRooms
-                        .filter(room => room.id !== preSelectedRoom?.id)
-                        .map((room) => (
-                          <SelectItem key={room.id} value={room.id}>
-                            Phong {room.roomNumber} - {room.roomType?.name} - ${room.roomType?.pricePerNight}/dem
-                          </SelectItem>
-                        ))}
-                      {availableRooms.length === 0 && !preSelectedRoom && !isCheckingAvailability && startDate && endDate && (
-                        <SelectItem value="none" disabled>
-                          Khong co phong kha dung
-                        </SelectItem>
-                      )}
-                      {!startDate && !endDate && (
-                        <SelectItem value="none" disabled>
-                          Vui long chon ngay truoc
-                        </SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
 
-                {/* Price Summary */}
-                {selectedRoom && numberOfNights > 0 && (
-                  <div className="p-4 rounded-lg bg-muted/50 space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">
-                        ${selectedRoom.pricePerNight} x {numberOfNights} dem
-                      </span>
-                      <span className="font-medium">${estimatedTotal}</span>
-                    </div>
-                    <div className="flex justify-between font-semibold">
-                      <span>Tong uoc tinh</span>
-                      <span className="text-primary">${estimatedTotal}</span>
-                    </div>
+
+                    {/* Price Summary */}
+                    {selectedRoom && numberOfNights > 0 && (
+                      <div className="p-4 rounded-lg bg-muted/50 space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">
+                            ${selectedRoom.pricePerNight} x {numberOfNights} dem
+                          </span>
+                          <span className="font-medium">${estimatedTotal}</span>
+                        </div>
+                        <div className="flex justify-between font-semibold">
+                          <span>Tong uoc tinh</span>
+                          <span className="text-primary">${estimatedTotal}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
 
                 <Button
                   type="submit"
