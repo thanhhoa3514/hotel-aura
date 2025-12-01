@@ -19,6 +19,9 @@ import Login from "./pages/client/Login";
 import Register from "./pages/client/Register";
 import EmailVerification from "./pages/client/EmailVerification";
 import VerificationSuccess from "./pages/client/VerificationSuccess";
+import { MyBookings } from "./pages/client/MyBookings";
+import { Profile } from "./pages/client/Profile";
+import { Settings } from "./pages/client/Settings";
 
 // Admin pages
 import Dashboard from "./pages/admin/Dashboard";
@@ -72,6 +75,32 @@ const App = () => (
             <Route path="/register" element={<Register />} />
             <Route path="/verify-email" element={<EmailVerification />} />
             <Route path="/verification-success" element={<VerificationSuccess />} />
+
+            {/* Protected client routes */}
+            <Route
+              path="/my-bookings"
+              element={
+                <ProtectedRoute>
+                  <MyBookings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <Settings />
+                </ProtectedRoute>
+              }
+            />
 
             {/* Protected admin routes */}
             <Route
