@@ -18,6 +18,12 @@ export interface UserInfo {
     fullName: string;
     email: string;
     role: string;
+    keycloakUserId?: string;
+    phone?: string;
+    address?: string;
+    avatar?: string;
+    roles?: string[];
+    createdAt?: string;
 }
 
 export interface AuthResponse {

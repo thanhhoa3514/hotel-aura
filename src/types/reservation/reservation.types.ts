@@ -3,6 +3,7 @@
 import { GuestResponse } from '../guest/guest.types';
 import { RoomResponse } from '../room/room.types';
 
+
 export type ReservationStatus = 'PENDING' | 'CONFIRMED' | 'CHECKED_IN' | 'CHECKED_OUT' | 'CANCELLED';
 
 export interface ReservationRequest {
@@ -10,6 +11,8 @@ export interface ReservationRequest {
     roomIds: string[];
     checkIn: string; // ISO date string YYYY-MM-DD
     checkOut: string; // ISO date string YYYY-MM-DD
+    numberOfGuests?: number;
+    specialRequests?: string;
     status?: ReservationStatus;
 }
 
@@ -19,6 +22,8 @@ export interface ReservationResponse {
     rooms: RoomResponse[];
     checkIn: string;
     checkOut: string;
+    numberOfGuests: number;
+    specialRequests?: string;
     totalAmount: number;
     status: ReservationStatus;
     createdAt: string;

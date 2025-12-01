@@ -3,6 +3,9 @@
 export interface GuestResponse {
     id: string;
     fullName: string;
+    email: string;
+    phone: string;
+    address: string;
     keycloakUserId: string;
     createdAt: string;
     updatedAt: string;

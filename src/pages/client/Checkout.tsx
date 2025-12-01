@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ChevronLeft, CreditCard, Calendar, Users, Info, Check, Wallet, Loader2 } from "lucide-react";
+import { ChevronLeft, CreditCard, Calendar, Users, Info, Check, Wallet, Loader2, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { reservationService } from "@/services/reservationService";
 import { format } from "date-fns";
+import { ClientNavbar } from "@/components/layout/ClientNavbar";
 
 interface CheckoutState {
   startDate?: Date;
@@ -31,11 +33,10 @@ export default function Checkout() {
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
   const bookingData = (location.state as CheckoutState) || {};
-
-  const [selectedPayment, setSelectedPayment] = useState("mastercard");
   const [showAddPayment, setShowAddPayment] = useState(false);
   const [showTripDetails, setShowTripDetails] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [specialRequests, setSpecialRequests] = useState("");
 
   // Calculate pricing
   const nightlyRate = bookingData.roomPrice || 150;
@@ -104,10 +105,12 @@ export default function Checkout() {
 
       // Create reservation
       const reservation = await reservationService.createReservation({
-        keycloakUserId: user.id,
+        keycloakUserId: user.keycloakUserId || user.id,
         roomIds: [bookingData.roomId],
         checkIn: checkInDate,
         checkOut: checkOutDate,
+        numberOfGuests: parseInt(bookingData.guests || "1"),
+        specialRequests: specialRequests || undefined,
         status: "PENDING",
       });
 
@@ -116,15 +119,15 @@ export default function Checkout() {
         description: `Ma dat phong: ${reservation.id.substring(0, 8).toUpperCase()}. Ban se nhan duoc email xac nhan trong giay lat.`,
       });
 
-      // Navigate to success page or home
+      // Navigate to my bookings page
       setTimeout(() => {
-        navigate("/", {
+        navigate("/my-bookings", {
           state: {
             reservationSuccess: true,
             reservationId: reservation.id
           }
         });
-      }, 2000);
+      }, 1500);
 
     } catch (error: any) {
       console.error("Reservation error:", error);
@@ -165,29 +168,7 @@ export default function Checkout() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <motion.header
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        className="sticky top-0 z-50 backdrop-blur-md bg-card/80 border-b"
-      >
-        <div className="container mx-auto px-6 h-20 flex items-center justify-between">
-          <button onClick={() => navigate("/")} className="flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent">
-              <span className="text-lg font-bold text-primary-foreground">HP</span>
-            </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-              HotelPro
-            </span>
-          </button>
-
-          {/* User info */}
-          {isAuthenticated && user && (
-            <div className="text-sm text-muted-foreground">
-              Dang nhap: <span className="font-medium text-foreground">{user.fullName}</span>
-            </div>
-          )}
-        </div>
-      </motion.header>
+      <ClientNavbar currentPage="bookings" />
 
       {/* Back Button */}
       <div className="container mx-auto px-6 py-6 max-w-7xl">
@@ -241,34 +222,6 @@ export default function Checkout() {
                 <h2 className="text-2xl font-bold mb-6">Phuong thuc thanh toan</h2>
 
                 <div className="space-y-4">
-                  <div className="space-y-3">
-                    <p className="text-sm font-medium text-muted-foreground">The da luu</p>
-                    <RadioGroup value={selectedPayment} onValueChange={setSelectedPayment}>
-                      <div className="grid grid-cols-2 lg:grid-cols-1 gap-3">
-                        {savedPayments.map((payment) => (
-                          <label
-                            key={payment.id}
-                            htmlFor={payment.id}
-                            className={`flex flex-col gap-2 p-4 rounded-lg border-2 cursor-pointer transition-all hover:scale-[1.02] ${selectedPayment === payment.id
-                              ? "border-primary bg-accent/50"
-                              : "border-border hover:border-primary/50"
-                              }`}
-                          >
-                            <div className="flex items-center justify-between">
-                              {getPaymentIcon(payment.icon)}
-                              <RadioGroupItem value={payment.id} id={payment.id} />
-                            </div>
-                            <div>
-                              <p className="font-semibold text-sm">{payment.type}</p>
-                              <p className="text-xs text-muted-foreground">**** {payment.last4}</p>
-                              <p className="text-xs text-muted-foreground">Expiry {payment.expiry}</p>
-                            </div>
-                          </label>
-                        ))}
-                      </div>
-                    </RadioGroup>
-                  </div>
-
                   <Button
                     variant="ghost"
                     className="w-full justify-start text-primary gap-2"
@@ -348,6 +301,33 @@ export default function Checkout() {
                     <span>Doi xu voi nha cua chu nha nhu nha cua ban</span>
                   </li>
                 </ul>
+              </Card>
+            </motion.div>
+
+            {/* Special Requests */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <Card className="p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <MessageSquare className="h-5 w-5 text-primary" />
+                  <h2 className="text-xl font-bold">Yeu cau dac biet</h2>
+                </div>
+                <p className="text-muted-foreground mb-4 text-sm">
+                  Co dieu gi dac biet ban muon chung toi biet? (Khong bat buoc)
+                </p>
+                <Textarea
+                  value={specialRequests}
+                  onChange={(e) => setSpecialRequests(e.target.value)}
+                  placeholder="Vi du: Phong tang cao, giuong doi, khong hut thuoc..."
+                  className="min-h-[100px] resize-none"
+                  maxLength={500}
+                />
+                <p className="text-xs text-muted-foreground mt-2 text-right">
+                  {specialRequests.length}/500
+                </p>
               </Card>
             </motion.div>
           </div>

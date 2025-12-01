@@ -27,7 +27,7 @@ export interface RoomResponse {
     roomType: RoomTypeResponse;
     floor: number;
     note: string;
-    status: RoomStatusResponse;
+    roomStatus: RoomStatusResponse;
     capacity?: number;
     size?: number;
     images: RoomImageResponse[];

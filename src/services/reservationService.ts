@@ -46,11 +46,11 @@ export const reservationService = {
     /**
      * Get reservations by guest's Keycloak user ID
      */
-    async getReservationsByGuestId(keycloakUserId: string): Promise<ReservationResponse[]> {
+    async getReservationsByGuestId(keycloakUserId: string): Promise<ApiResponse<ReservationResponse[]>> {
         const response = await apiClient.get<ApiResponse<ReservationResponse[]>>(
             `/api/v1/reservations/guest/${keycloakUserId}`
         );
-        return response.data.data;
+        return response.data;
     },
 
     /**
@@ -147,6 +147,17 @@ export const reservationService = {
         const response = await apiClient.get<ApiResponse<RoomResponse[]>>(
             '/api/v1/rooms/available',
             { params: { checkIn, checkOut } }
+        );
+        return response.data.data;
+    },
+
+    /**
+     * Check if a room has active reservations
+     * Returns count of active reservations (PENDING, CONFIRMED, CHECKED_IN)
+     */
+    async checkRoomReservations(roomId: string): Promise<{ hasActiveReservations: boolean; count: number }> {
+        const response = await apiClient.get<ApiResponse<{ hasActiveReservations: boolean; count: number }>>(
+            `/api/v1/reservations/room/${roomId}/active-count`
         );
         return response.data.data;
     },

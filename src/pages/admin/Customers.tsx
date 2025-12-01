@@ -135,7 +135,7 @@ export default function Customers() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Tên khách hàng</TableHead>
-                    <TableHead>ID</TableHead>
+                    <TableHead>Email</TableHead>
                     <TableHead>Keycloak User ID</TableHead>
                     <TableHead>Ngày tạo</TableHead>
                     <TableHead>Cập nhật lần cuối</TableHead>
@@ -153,7 +153,7 @@ export default function Customers() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Mail className="h-4 w-4 text-muted-foreground" />
-                          {guest.id}
+                          {guest.email}
                         </div>
                       </TableCell>
                       <TableCell>

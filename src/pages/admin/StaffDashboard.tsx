@@ -3,7 +3,6 @@ import { Calendar, Users, Clock, CheckCircle } from "lucide-react";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/integrations/supabase/client";
 
 interface Booking {
   id: string;
@@ -26,40 +25,18 @@ const StaffDashboard = () => {
   }, []);
 
   const fetchDashboardData = async () => {
-    const today = new Date().toISOString().split('T')[0];
-    
-    // Fetch today's check-ins
-    const { data: checkIns } = await supabase
-      .from('bookings')
-      .select('*')
-      .eq('check_in_date', today)
-      .order('created_at', { ascending: false });
+    // TODO: Replace with backend API call when Staff Dashboard API is implemented
+    console.log('Fetch staff dashboard data (stub)');
 
-    if (checkIns) {
-      setTodayCheckIns(checkIns);
-    }
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 300));
 
-    // Fetch stats
-    const { data: pending } = await supabase
-      .from('bookings')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'pending');
-
-    const { data: confirmed } = await supabase
-      .from('bookings')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'confirmed')
-      .eq('check_in_date', today);
-
-    const { data: checkedIn } = await supabase
-      .from('bookings')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'checked-in');
-
+    // Return empty/zero data for now
+    setTodayCheckIns([]);
     setStats({
-      pendingBookings: pending?.length || 0,
-      todayCheckIns: confirmed?.length || 0,
-      checkedIn: checkedIn?.length || 0,
+      pendingBookings: 0,
+      todayCheckIns: 0,
+      checkedIn: 0,
     });
   };
 

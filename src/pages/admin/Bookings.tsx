@@ -32,105 +32,58 @@ import {
 } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import reservationService from "@/services/reservationService";
+import { ReservationResponse } from "@/types/reservation/reservation.types";
 import { BookingDetailModal } from "@/components/booking/BookingDetailModal";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-interface Booking {
-  id: string;
-  guest_name: string;
-  guest_email: string;
-  guest_phone: string;
-  room_number: string;
-  room_type: string;
-  check_in_date: string;
-  check_out_date: string;
-  guests_count: number;
-  total_price: number;
-  status: string;
-  special_requests: string | null;
-  created_at: string;
-  updated_at: string;
-}
 
 const statusColors = {
-  pending: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20",
-  confirmed: "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20",
-  checked_in: "bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20",
-  checked_out: "bg-gray-500/10 text-gray-700 dark:text-gray-400 border-gray-500/20",
-  cancelled: "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20",
+  PENDING: "bg-yellow-500/10 text-yellow-700 dark:text-yellow-400 border-yellow-500/20",
+  CONFIRMED: "bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20",
+  CHECKED_IN: "bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/20",
+  CHECKED_OUT: "bg-gray-500/10 text-gray-700 dark:text-gray-400 border-gray-500/20",
+  CANCELLED: "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20",
 };
 
 const statusLabels = {
-  pending: "Chờ xác nhận",
-  confirmed: "Đã xác nhận",
-  checked_in: "Đã check-in",
-  checked_out: "Đã check-out",
-  cancelled: "Đã hủy",
+  PENDING: "Chờ xác nhận",
+  CONFIRMED: "Đã xác nhận",
+  CHECKED_IN: "Đã check-in",
+  CHECKED_OUT: "Đã check-out",
+  CANCELLED: "Đã hủy",
 };
 
 const Bookings = () => {
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [filteredBookings, setFilteredBookings] = useState<Booking[]>([]);
+  const [bookings, setBookings] = useState<ReservationResponse[]>([]);
+  const [filteredBookings, setFilteredBookings] = useState<ReservationResponse[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
+  const [selectedBooking, setSelectedBooking] = useState<ReservationResponse | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<string>("pending");
+  const [activeTab, setActiveTab] = useState<string>("PENDING");
 
-  // Fetch bookings from database
+  // Fetch bookings from backend
   const fetchBookings = async () => {
-    setIsLoading(true);
-    const { data, error } = await supabase
-      .from("bookings")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (error) {
+    try {
+      setIsLoading(true);
+      const data = await reservationService.getAllReservations();
+      setBookings(data);
+      setFilteredBookings(data);
+    } catch (error) {
+      console.error('Error fetching reservations:', error);
       toast({
         title: "Lỗi",
         description: "Không thể tải danh sách đặt phòng",
         variant: "destructive",
       });
-    } else {
-      setBookings(data || []);
-      setFilteredBookings(data || []);
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   useEffect(() => {
     fetchBookings();
-
-    // Setup realtime listener for new bookings
-    const channel = supabase
-      .channel("bookings-changes")
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "bookings",
-        },
-        (payload) => {
-          const newBooking = payload.new as Booking;
-
-          // Add new booking to the list
-          setBookings((prev) => [newBooking, ...prev]);
-          setFilteredBookings((prev) => [newBooking, ...prev]);
-
-          // Show toast notification
-          toast({
-            title: "🎉 Đặt phòng mới!",
-            description: `${newBooking.guest_name} đã đặt phòng ${newBooking.room_number} - ${newBooking.room_type}`,
-          });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
   }, []);
 
   // Filter bookings based on search and active tab
@@ -141,9 +94,9 @@ const Bookings = () => {
     if (searchTerm) {
       filtered = filtered.filter(
         (booking) =>
-          booking.guest_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          booking.guest_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          booking.room_number.toLowerCase().includes(searchTerm.toLowerCase())
+          booking.guest.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          booking.guest.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          booking.rooms.some(room => room.roomNumber.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
 
@@ -156,52 +109,52 @@ const Bookings = () => {
   }, [searchTerm, activeTab, bookings]);
 
   const handleStatusChange = async (bookingId: string, newStatus: string) => {
-    const { error } = await supabase
-      .from("bookings")
-      .update({ status: newStatus })
-      .eq("id", bookingId);
+    try {
+      // Map status changes to appropriate backend actions
+      if (newStatus === 'CHECKED_IN') {
+        await reservationService.checkIn(bookingId);
+      } else if (newStatus === 'CHECKED_OUT') {
+        await reservationService.checkOut(bookingId);
+      } else if (newStatus === 'CANCELLED') {
+        await reservationService.cancelReservation(bookingId);
+      }
 
-    if (error) {
-      toast({
-        title: "Lỗi",
-        description: "Không thể cập nhật trạng thái",
-        variant: "destructive",
-      });
-    } else {
-      setBookings((prev) =>
-        prev.map((booking) =>
-          booking.id === bookingId ? { ...booking, status: newStatus } : booking
-        )
-      );
+      // Refresh bookings list
+      await fetchBookings();
+
       toast({
         title: "Thành công",
         description: "Đã cập nhật trạng thái đặt phòng",
+      });
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast({
+        title: "Lỗi",
+        description: "Không thể cập nhật trạng thái đặt phòng",
+        variant: "destructive",
       });
     }
   };
 
   const handleDeleteBooking = async (bookingId: string) => {
-    const { error } = await supabase
-      .from("bookings")
-      .delete()
-      .eq("id", bookingId);
-
-    if (error) {
+    try {
+      await reservationService.deleteReservation(bookingId);
+      await fetchBookings();
+      toast({
+        title: "Thành công",
+        description: "Đã xóa đặt phòng",
+      });
+    } catch (error) {
+      console.error('Error deleting reservation:', error);
       toast({
         title: "Lỗi",
         description: "Không thể xóa đặt phòng",
         variant: "destructive",
       });
-    } else {
-      setBookings((prev) => prev.filter((booking) => booking.id !== bookingId));
-      toast({
-        title: "Thành công",
-        description: "Đã xóa đặt phòng",
-      });
     }
   };
 
-  const handleViewDetail = (booking: Booking) => {
+  const handleViewDetail = (booking: ReservationResponse) => {
     setSelectedBooking(booking);
     setIsDetailModalOpen(true);
   };
@@ -259,7 +212,7 @@ const Bookings = () => {
             <div>
               <p className="text-sm text-muted-foreground">Chờ xác nhận</p>
               <p className="text-2xl font-bold">
-                {bookings.filter((b) => b.status === "pending").length}
+                {bookings.filter((b) => b.status === "PENDING").length}
               </p>
             </div>
             <Users className="h-8 w-8 text-yellow-500" />
@@ -270,7 +223,7 @@ const Bookings = () => {
             <div>
               <p className="text-sm text-muted-foreground">Đã xác nhận</p>
               <p className="text-2xl font-bold">
-                {bookings.filter((b) => b.status === "confirmed").length}
+                {bookings.filter((b) => b.status === "CONFIRMED").length}
               </p>
             </div>
             <Users className="h-8 w-8 text-green-500" />
@@ -281,7 +234,7 @@ const Bookings = () => {
             <div>
               <p className="text-sm text-muted-foreground">Đã check-in</p>
               <p className="text-2xl font-bold">
-                {bookings.filter((b) => b.status === "checked_in").length}
+                {bookings.filter((b) => b.status === "CHECKED_IN").length}
               </p>
             </div>
             <Users className="h-8 w-8 text-orange-500" />
@@ -305,17 +258,17 @@ const Bookings = () => {
       {/* Tabs for Booking Status */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="pending">
-            Chờ xác nhận ({bookings.filter((b) => b.status === "pending").length})
+          <TabsTrigger value="PENDING">
+            Chờ xác nhận ({bookings.filter((b) => b.status === "PENDING").length})
           </TabsTrigger>
-          <TabsTrigger value="confirmed">
-            Chờ check-in ({bookings.filter((b) => b.status === "confirmed").length})
+          <TabsTrigger value="CONFIRMED">
+            Chờ check-in ({bookings.filter((b) => b.status === "CONFIRMED").length})
           </TabsTrigger>
-          <TabsTrigger value="checked_in">
-            Đã check-in ({bookings.filter((b) => b.status === "checked_in").length})
+          <TabsTrigger value="CHECKED_IN">
+            Đã check-in ({bookings.filter((b) => b.status === "CHECKED_IN").length})
           </TabsTrigger>
-          <TabsTrigger value="checked_out">
-            Đã check-out ({bookings.filter((b) => b.status === "checked_out").length})
+          <TabsTrigger value="CHECKED_OUT">
+            Đã check-out ({bookings.filter((b) => b.status === "CHECKED_OUT").length})
           </TabsTrigger>
           <TabsTrigger value="all">
             Tất cả ({bookings.length})
@@ -366,7 +319,7 @@ const Bookings = () => {
                       <TableCell className="font-medium">
                         <div>
                           <p className="font-semibold group-hover:text-primary transition-colors">
-                            {booking.guest_name}
+                            {booking.guest.fullName}
                           </p>
                         </div>
                       </TableCell>
@@ -374,30 +327,30 @@ const Bookings = () => {
                         <div className="space-y-1 text-sm">
                           <div className="flex items-center gap-2 text-muted-foreground">
                             <Mail className="h-3 w-3" />
-                            <span className="truncate max-w-[150px]">{booking.guest_email}</span>
+                            <span className="truncate max-w-[150px]">{booking.guest.email}</span>
                           </div>
                           <div className="flex items-center gap-2 text-muted-foreground">
                             <Phone className="h-3 w-3" />
-                            {booking.guest_phone}
+                            {booking.guest.phone || 'N/A'}
                           </div>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div>
-                          <p className="font-semibold">{booking.room_number}</p>
-                          <p className="text-sm text-muted-foreground">{booking.room_type}</p>
+                          <p className="font-semibold">{booking.rooms.map(r => r.roomNumber).join(', ')}</p>
+                          <p className="text-sm text-muted-foreground">{booking.rooms.map(r => r.roomType).join(', ')}</p>
                         </div>
                       </TableCell>
-                      <TableCell>{formatDate(booking.check_in_date)}</TableCell>
-                      <TableCell>{formatDate(booking.check_out_date)}</TableCell>
+                      <TableCell>{formatDate(booking.checkIn)}</TableCell>
+                      <TableCell>{formatDate(booking.checkOut)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <Users className="h-4 w-4 text-muted-foreground" />
-                          {booking.guests_count}
+                          {booking.rooms.length}
                         </div>
                       </TableCell>
                       <TableCell className="font-semibold">
-                        {formatCurrency(booking.total_price)}
+                        {formatCurrency(booking.totalAmount)}
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         <Select
@@ -410,11 +363,11 @@ const Bookings = () => {
                             </Badge>
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="pending">Chờ xác nhận</SelectItem>
-                            <SelectItem value="confirmed">Đã xác nhận</SelectItem>
-                            <SelectItem value="checked_in">Đã check-in</SelectItem>
-                            <SelectItem value="checked_out">Đã check-out</SelectItem>
-                            <SelectItem value="cancelled">Đã hủy</SelectItem>
+                            <SelectItem value="PENDING">Chờ xác nhận</SelectItem>
+                            <SelectItem value="CONFIRMED">Đã xác nhận</SelectItem>
+                            <SelectItem value="CHECKED_IN">Đã check-in</SelectItem>
+                            <SelectItem value="CHECKED_OUT">Đã check-out</SelectItem>
+                            <SelectItem value="CANCELLED">Đã hủy</SelectItem>
                           </SelectContent>
                         </Select>
                       </TableCell>

@@ -33,22 +33,24 @@ import { toast as sonnerToast } from "sonner";
 const mapRoomResponseToRoom = (apiRoom: RoomResponse) => ({
   id: apiRoom.id,
   number: apiRoom.roomNumber,
-  type: apiRoom.roomType.name,
-  price: apiRoom.roomType.pricePerNight,
-  status: apiRoom.status.name.toLowerCase(),
+  type: apiRoom.roomType?.name || "Unknown",
+  price: apiRoom.roomType?.pricePerNight || 0,
+  status: apiRoom.roomStatus?.name || "Available",
   floor: apiRoom.floor,
-  size: "N/A", // Not provided by backend
-  capacity: 2, // Default value
+  size: apiRoom.size?.toString() || "N/A",
+  capacity: apiRoom.capacity || 2,
   description: apiRoom.note || "Không có mô tả",
   amenities: [] as string[], // Not provided by backend
   lastBooking: undefined,
+  roomType: apiRoom.roomType,  // Keep original for detail view
+  roomStatus: apiRoom.roomStatus,  // Keep original for detail view
 });
 
 const statusMap = {
-  available: { label: "Trống", variant: "default" as const, color: "bg-green-500/20 text-green-700 dark:text-green-400 border-green-500/50" },
-  occupied: { label: "Đã đặt", variant: "secondary" as const, color: "bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/50" },
-  cleaning: { label: "Đang dọn", variant: "outline" as const, color: "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/50" },
-  maintenance: { label: "Bảo trì", variant: "destructive" as const, color: "bg-orange-500/20 text-orange-700 dark:text-orange-400 border-orange-500/50" },
+  AVAILABLE: { label: "Trống", variant: "default" as const, color: "bg-green-500/20 text-green-700 dark:text-green-400 border-green-500/50" },
+  OCCUPIED: { label: "Đã đặt", variant: "secondary" as const, color: "bg-red-500/20 text-red-700 dark:text-red-400 border-red-500/50" },
+  CLEANING: { label: "Đang dọn", variant: "outline" as const, color: "bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 border-yellow-500/50" },
+  MAINTENANCE: { label: "Bảo trì", variant: "destructive" as const, color: "bg-orange-500/20 text-orange-700 dark:text-orange-400 border-orange-500/50" },
 };
 
 const Rooms = () => {
@@ -85,8 +87,9 @@ const Rooms = () => {
   };
 
   const filteredRooms = rooms.filter((room) => {
-    const matchesSearch = room.number.includes(searchTerm) || room.type.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = filterType === "all" || room.type === filterType;
+    const roomType = room.roomType?.name || room.type || "";
+    const matchesSearch = room.number.includes(searchTerm) || roomType.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesType = filterType === "all" || roomType === filterType;
     return matchesSearch && matchesType;
   });
 
@@ -132,34 +135,21 @@ const Rooms = () => {
     });
   };
 
-  const handleSaveRoom = (updatedRoom: any) => {
-    setRooms(prevRooms =>
-      prevRooms.map(room =>
-        room.id === updatedRoom.id ? updatedRoom : room
-      )
-    );
+  const handleSaveRoom = async (updatedRoom: any) => {
+    // Room is already updated by RoomDetailModal
+    // Just refresh the rooms list from backend
+    await fetchRooms();  // Fetch updated list from backend
     toast({
       title: "Đã lưu thay đổi",
       description: `Thông tin phòng ${updatedRoom.number} đã được cập nhật.`,
     });
   };
 
-  const handleAddRoom = (roomData: any) => {
-    const newRoom = {
-      id: rooms.length + 1,
-      number: roomData.number,
-      type: roomData.type,
-      price: roomData.price,
-      status: roomData.status,
-      floor: roomData.floor,
-      size: roomData.size,
-      capacity: roomData.capacity,
-      description: roomData.description,
-      amenities: roomData.amenities,
-    };
-
-    setRooms(prevRooms => [...prevRooms, newRoom]);
+  const handleAddRoom = async (roomData: any) => {
+    // Room is already created by AddRoomModal
+    // Just refresh the rooms list from backend
     setIsAddModalOpen(false);
+    await fetchRooms();  // Fetch updated list from backend
   };
 
   return (
@@ -263,9 +253,14 @@ const Rooms = () => {
                                 whileTap={{ scale: 0.95 }}
                               >
                                 <Badge
-                                  className={`${statusMap[room.status as keyof typeof statusMap].color} transition-all duration-300 cursor-pointer hover:shadow-md`}
+                                  className={`${statusMap[(room.roomStatus?.name || room.status?.name) as keyof typeof statusMap]?.color ||
+                                    "bg-gray-500/20"
+                                    } transition-all duration-300 cursor-pointer hover:shadow-md`}
                                 >
-                                  {statusMap[room.status as keyof typeof statusMap].label}
+                                  {statusMap[(room.roomStatus?.name || room.status?.name) as keyof typeof statusMap]?.label ||
+                                    room.roomStatus?.name ||
+                                    room.status?.name ||
+                                    "N/A"}
                                 </Badge>
                               </motion.div>
                             </button>
