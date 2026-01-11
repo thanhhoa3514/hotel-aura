@@ -34,21 +34,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
     const checkAuth = async () => {
         try {
             setIsLoading(true);
-            console.log('AuthContext - checkAuth started');
-            console.log('AuthContext - keycloak.authenticated:', keycloak.authenticated);
 
-            // If Keycloak is authenticated, user info will come from backend
-            // Backend will validate Keycloak token and return user info
             if (keycloak.authenticated) {
-                // User authenticated via Keycloak (social login)
-                // The backend will handle JIT provisioning when we call APIs
                 const currentUser = await authService.getCurrentUser();
-                console.log('AuthContext - Keycloak user:', currentUser);
                 setUser(currentUser);
             } else {
-                // Check for traditional email/password login
                 const currentUser = await authService.getCurrentUser();
-                console.log('AuthContext - Traditional user:', currentUser);
                 setUser(currentUser);
             }
         } catch (error) {
@@ -66,14 +57,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
             const userInfo = await authService.login({ email, password });
             setUser(userInfo);
             toast.success(`Chào mừng ${userInfo.fullName}!`);
-            return userInfo;  // Return userInfo for immediate use
+            return userInfo;
         } catch (error: any) {
-            // Error already handled by apiClient
             throw error;
         }
     };
 
-    // Social login with Keycloak
     const loginWithSocial = (provider: 'google' | 'facebook') => {
         keycloak.login({
             idpHint: provider,
