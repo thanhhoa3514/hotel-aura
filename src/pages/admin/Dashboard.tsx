@@ -12,7 +12,7 @@ export default function Dashboard() {
                 </p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {/* <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <StatCard
                     title="Tổng phòng"
                     value="120"
@@ -37,9 +37,9 @@ export default function Dashboard() {
                     trend={{ value: 20, label: "so với tháng trước" }}
                     icon={DollarSign}
                 />
-            </div>
+            </div> */}
 
-            <RevenueChart />
+            {/* <RevenueChart /> */}
         </div>
     );
 }

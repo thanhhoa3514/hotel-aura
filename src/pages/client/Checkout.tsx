@@ -1,22 +1,20 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate, useLocation } from "react-router-dom";
-import { ChevronLeft, CreditCard, Calendar, Users, Info, Check, Wallet, Loader2, MessageSquare } from "lucide-react";
+import { ChevronLeft, CreditCard, Calendar, Users, Info, Check, Loader2, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { reservationService } from "@/services/reservationService";
+import { paymentService } from "@/services/paymentService";
 import { format } from "date-fns";
 import { ClientNavbar } from "@/components/layout/ClientNavbar";
 
 interface CheckoutState {
+  reservationId?: string;
   startDate?: Date;
   endDate?: Date;
   guests?: string;
@@ -33,7 +31,6 @@ export default function Checkout() {
   const { toast } = useToast();
   const { user, isAuthenticated } = useAuth();
   const bookingData = (location.state as CheckoutState) || {};
-  const [showAddPayment, setShowAddPayment] = useState(false);
   const [showTripDetails, setShowTripDetails] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [specialRequests, setSpecialRequests] = useState("");
@@ -52,116 +49,59 @@ export default function Checkout() {
     // Check if user is authenticated
     if (!isAuthenticated || !user) {
       toast({
-        title: "Yeu cau dang nhap",
-        description: "Ban can dang nhap de dat phong.",
+        title: "Yêu cầu đăng nhập",
+        description: "Bạn cần đăng nhập để đặt phòng.",
         variant: "destructive",
       });
       navigate("/login", { state: { from: location } });
       return;
     }
 
-    // Validate booking data
-    if (!bookingData.startDate || !bookingData.endDate) {
+    // Validate reservation ID exists
+    if (!bookingData.reservationId) {
       toast({
-        title: "Thieu thong tin",
-        description: "Vui long chon ngay nhan phong va tra phong.",
+        title: "Lỗi đặt phòng",
+        description: "Không tìm thấy thông tin đặt phòng. Vui lòng đặt lại.",
         variant: "destructive",
       });
-      return;
-    }
-
-    if (!bookingData.roomId) {
-      toast({
-        title: "Thieu thong tin phong",
-        description: "Vui long chon phong truoc khi dat.",
-        variant: "destructive",
-      });
+      navigate("/rooms");
       return;
     }
 
     setIsLoading(true);
 
     try {
-      // Format dates to ISO string (YYYY-MM-DD)
-      const checkInDate = format(bookingData.startDate, "yyyy-MM-dd");
-      const checkOutDate = format(bookingData.endDate, "yyyy-MM-dd");
-
-      // First, check room availability
-      const availabilityResponse = await reservationService.checkRoomAvailability({
-        roomIds: [bookingData.roomId],
-        checkIn: checkInDate,
-        checkOut: checkOutDate,
+      toast({
+        title: "Đang chuyển đến trang thanh toán...",
+        description: "Vui lòng đợi trong giây lát.",
       });
 
-      if (!availabilityResponse.allAvailable) {
-        toast({
-          title: "Phong khong kha dung",
-          description: "Phong da duoc dat trong khoang thoi gian nay. Vui long chon ngay khac.",
-          variant: "destructive",
-        });
-        setIsLoading(false);
-        return;
+      // Create Stripe Checkout Session
+      const baseUrl = window.location.origin;
+      const response = await paymentService.createCheckoutSession({
+        reservationId: bookingData.reservationId,
+        successUrl: `${baseUrl}/payment-success`,
+        cancelUrl: `${baseUrl}/payment-cancel`,
+      });
+
+      // Redirect to Stripe Checkout page
+      if (response.sessionUrl) {
+        window.location.href = response.sessionUrl;
+      } else {
+        throw new Error("Không thể tạo phiên thanh toán");
       }
 
-      // Create reservation
-      const reservation = await reservationService.createReservation({
-        keycloakUserId: user.keycloakUserId || user.id,
-        roomIds: [bookingData.roomId],
-        checkIn: checkInDate,
-        checkOut: checkOutDate,
-        numberOfGuests: parseInt(bookingData.guests || "1"),
-        specialRequests: specialRequests || undefined,
-        status: "PENDING",
-      });
-
-      toast({
-        title: "Dat phong thanh cong!",
-        description: `Ma dat phong: ${reservation.id.substring(0, 8).toUpperCase()}. Ban se nhan duoc email xac nhan trong giay lat.`,
-      });
-
-      // Navigate to my bookings page
-      setTimeout(() => {
-        navigate("/my-bookings", {
-          state: {
-            reservationSuccess: true,
-            reservationId: reservation.id
-          }
-        });
-      }, 1500);
-
     } catch (error: any) {
-      console.error("Reservation error:", error);
+      console.error("Payment error:", error);
 
-      // Error is already handled by apiClient interceptor
-      // But we can add additional handling here if needed
-      const errorMessage = error?.response?.data?.message || "Co loi xay ra khi dat phong. Vui long thu lai.";
+      const errorMessage = error?.response?.data?.message || error?.message || "Có lỗi xảy ra khi thanh toán. Vui lòng thử lại.";
 
       toast({
-        title: "Dat phong that bai",
+        title: "Thanh toán thất bại",
         description: errorMessage,
         variant: "destructive",
       });
-    } finally {
       setIsLoading(false);
-    }
-  };
-
-  const savedPayments = [
-    { id: "paypal", type: "PayPal", last4: "1234", expiry: "06/2024", icon: "paypal" },
-    { id: "mastercard", type: "Mastercard", last4: "1234", expiry: "06/2024", icon: "mastercard" },
-    { id: "visa", type: "Visa", last4: "1234", expiry: "06/2024", icon: "visa" },
-  ];
-
-  const getPaymentIcon = (iconType: string) => {
-    switch (iconType) {
-      case "paypal":
-        return <Wallet className="h-6 w-6 text-primary" />;
-      case "mastercard":
-        return <CreditCard className="h-6 w-6 text-primary" />;
-      case "visa":
-        return <CreditCard className="h-6 w-6 text-primary" />;
-      default:
-        return <CreditCard className="h-6 w-6 text-primary" />;
     }
   };
 
@@ -213,46 +153,20 @@ export default function Checkout() {
               </motion.div>
             )}
 
-            {/* Payment Method */}
+            {/* Payment Info */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              <Card className="p-6">
-                <h2 className="text-2xl font-bold mb-6">Phuong thuc thanh toan</h2>
+              <Card className="p-6 border-primary/20 bg-primary/5">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 bg-primary/10 rounded-full">
+                    <CreditCard className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold mb-2">Thanh toán qua Stripe</h2>
 
-                <div className="space-y-4">
-                  <Button
-                    variant="ghost"
-                    className="w-full justify-start text-primary gap-2"
-                    onClick={() => setShowAddPayment(!showAddPayment)}
-                  >
-                    <CreditCard className="h-4 w-4" />
-                    Them phuong thuc thanh toan moi
-                  </Button>
-
-                  {showAddPayment && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      className="space-y-4 pt-4"
-                    >
-                      <div>
-                        <Label htmlFor="cardNumber">So the</Label>
-                        <Input id="cardNumber" placeholder="1234 5678 9012 3456" />
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="expiry">Ngay het han</Label>
-                          <Input id="expiry" placeholder="MM/YY" />
-                        </div>
-                        <div>
-                          <Label htmlFor="cvv">CVV</Label>
-                          <Input id="cvv" placeholder="123" />
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
+                  </div>
                 </div>
               </Card>
             </motion.div>

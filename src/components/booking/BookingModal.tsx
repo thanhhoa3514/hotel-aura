@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { DateRangeModal } from "./DateRangeModal";
 import { format } from "date-fns";
 import { roomService } from "@/services/roomService";
@@ -29,6 +30,7 @@ interface BookingModalProps {
 
 export const BookingModal = ({ open, onOpenChange, preSelectedRoom, isFixedRoom = false }: BookingModalProps) => {
   const { toast } = useToast();
+  const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [startDate, setStartDate] = useState<Date | undefined>();
@@ -113,6 +115,17 @@ export const BookingModal = ({ open, onOpenChange, preSelectedRoom, isFixedRoom 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Check authentication first
+    if (!isAuthenticated || !user) {
+      toast({
+        title: "Yeu cau dang nhap",
+        description: "Ban can dang nhap de dat phong.",
+        variant: "destructive",
+      });
+      navigate("/login");
+      return;
+    }
+
     if (!startDate || !endDate) {
       toast({
         title: "Vui long chon ngay",
@@ -133,9 +146,14 @@ export const BookingModal = ({ open, onOpenChange, preSelectedRoom, isFixedRoom 
     setIsLoading(true);
 
     try {
-      // Verify room availability before proceeding
+      // Step 1: Verify room availability
       const checkIn = format(startDate, "yyyy-MM-dd");
       const checkOut = format(endDate, "yyyy-MM-dd");
+
+      toast({
+        title: "Dang kiem tra phong...",
+        description: "Vui long doi trong giay lat.",
+      });
 
       const availabilityResponse = await reservationService.checkRoomAvailability({
         roomIds: [formData.roomId],
@@ -150,17 +168,37 @@ export const BookingModal = ({ open, onOpenChange, preSelectedRoom, isFixedRoom 
           variant: "destructive",
         });
         setIsLoading(false);
-        // Reload available rooms
         loadAvailableRooms();
         return;
       }
 
+      // Step 2: Create reservation with PENDING status
+      toast({
+        title: "Dang tao dat phong...",
+        description: "He thong dang xu ly yeu cau cua ban.",
+      });
+
+      const reservation = await reservationService.createReservation({
+        keycloakUserId: user.keycloakUserId || user.id,
+        roomIds: [formData.roomId],
+        checkIn,
+        checkOut,
+        numberOfGuests: parseInt(formData.guests),
+        status: "PENDING",
+      });
+
       const selectedRoom = getSelectedRoom();
 
-      // Navigate to checkout page with booking data
+      // Step 3: Navigate to checkout with reservation ID
+      toast({
+        title: "Thanh cong!",
+        description: "Chuyen den trang thanh toan...",
+      });
+
       onOpenChange(false);
       navigate("/checkout", {
         state: {
+          reservationId: reservation.id,
           startDate,
           endDate,
           guests: formData.guests,
@@ -171,11 +209,12 @@ export const BookingModal = ({ open, onOpenChange, preSelectedRoom, isFixedRoom 
           roomImage: selectedRoom?.imageUrl || "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=800",
         },
       });
-    } catch (error) {
-      console.error("Error checking availability:", error);
+    } catch (error: any) {
+      console.error("Error creating reservation:", error);
+      const errorMessage = error?.response?.data?.message || "Khong the tao dat phong. Vui long thu lai.";
       toast({
         title: "Co loi xay ra",
-        description: "Khong the kiem tra tinh kha dung cua phong. Vui long thu lai.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
