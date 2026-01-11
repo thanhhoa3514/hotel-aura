@@ -1,5 +1,6 @@
 import axios, { AxiosError, AxiosInstance, AxiosResponse } from "axios";
 import { toast } from "sonner";
+import { ApiError } from "@/types";
 
 const apiClient: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:8080",
@@ -25,7 +26,7 @@ apiClient.interceptors.response.use(
   (response: AxiosResponse) => {
     return response;
   },
-  (error: AxiosError<any>) => {
+  (error: AxiosError<ApiError>) => {
     let errorMessage = "Đã xảy ra lỗi khi kết nối với server";
 
     if (error.response) {
@@ -36,7 +37,7 @@ apiClient.interceptors.response.use(
         case 400:
           errorMessage = data?.message || "Dữ liệu không hợp lệ";
           break;
-        case 401:
+        case 401: {
           errorMessage = "Bạn cần đăng nhập để thực hiện thao tác này";
 
           // Only redirect to login for protected routes (admin/staff routes)
@@ -49,6 +50,7 @@ apiClient.interceptors.response.use(
             window.location.href = "/login";
           }
           break;
+        }
         case 403:
           errorMessage = "Bạn không có quyền truy cập";
           break;

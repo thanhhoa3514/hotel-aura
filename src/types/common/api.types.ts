@@ -4,5 +4,13 @@ export interface ApiResponse<T> {
     message?: string;
     data: T;
     timestamp?: string;
+    errorCode?: string;
+}
+
+// API Error response structure
+export interface ApiError {
+    message: string;
+    errorCode?: string;
+    detail?: string;
 }
 
