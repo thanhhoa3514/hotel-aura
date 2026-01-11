@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+.dimport { useState, useCallback } from "react";
 import { X, Upload, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";

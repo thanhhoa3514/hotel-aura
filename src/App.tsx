@@ -15,6 +15,8 @@ import Home from "./pages/client/Home";
 import ClientRooms from "./pages/client/Rooms";
 import RoomDetail from "./pages/client/RoomDetail";
 import Checkout from "./pages/client/Checkout";
+import PaymentSuccess from "./pages/client/PaymentSuccess";
+import PaymentCancel from "./pages/client/PaymentCancel";
 import Login from "./pages/client/Login";
 import Register from "./pages/client/Register";
 import EmailVerification from "./pages/client/EmailVerification";
@@ -71,6 +73,8 @@ const App = () => (
             <Route path="/rooms" element={<ClientRooms />} />
             <Route path="/rooms/:id" element={<RoomDetail />} />
             <Route path="/checkout" element={<Checkout />} />
+            <Route path="/payment-success" element={<PaymentSuccess />} />
+            <Route path="/payment-cancel" element={<PaymentCancel />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/verify-email" element={<EmailVerification />} />
