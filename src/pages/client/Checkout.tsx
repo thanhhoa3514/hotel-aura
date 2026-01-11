@@ -91,10 +91,13 @@ export default function Checkout() {
         throw new Error("Không thể tạo phiên thanh toán");
       }
 
-    } catch (error: any) {
+    } catch (error) {
       console.error("Payment error:", error);
 
-      const errorMessage = error?.response?.data?.message || error?.message || "Có lỗi xảy ra khi thanh toán. Vui lòng thử lại.";
+      const errorMessage = error instanceof Error && 'response' in error
+        ? (error as { response?: { data?: { message?: string } } }).response?.data?.message
+        : error instanceof Error ? error.message
+        : "Có lỗi xảy ra khi thanh toán. Vui lòng thử lại.";
 
       toast({
         title: "Thanh toán thất bại",
